@@ -17,6 +17,7 @@ Autumn uses a country-aware configuration API and companion backend-for-frontend
 - Country detection is based on payment information first, then SIM/operator for mobile, IP as fallback, followed by profile, locale, and final fallback logic.
 - Shared documents may declare platform predicates or similar conditions so iOS, Android, and Web behavior can be expressed in one model.
 - The backend-for-frontend evaluates country and platform conditions, trims irrelevant branches, and returns the reduced document the client should render.
+- When the client already holds a current document version, the backend-for-frontend may return a delta relative to that version instead of always returning the full reduced document.
 - Clients remain unaware of other countries' configurations.
 - Clients remain unaware of platform-specific branches or country-specific content that does not apply to them.
 
@@ -26,4 +27,5 @@ Autumn uses a country-aware configuration API and companion backend-for-frontend
 - Country-specific data is kept isolated from unrelated clients.
 - Server-side country and platform slicing become core parts of configuration and document delivery.
 - Shared documents can stay declarative while delivery remains tailored to each client context.
+- Delta delivery can further reduce payload size when the server and client agree on the current base version.
 - Correct country resolution is essential for compliance and user experience.

@@ -17,6 +17,7 @@ Autumn defines a shared set of interaction conventions for common frontend flows
 - Shared state documents should represent common lifecycle states such as loading, ready, empty, submitting, success, error, and completed when those states are relevant to the flow.
 - **Create** conventions describe actions that produce a new document, resource, or workflow instance.
 - **Update** conventions describe actions that mutate an existing document or stateful resource.
+- **Delta** conventions describe partial state changes that are applied to a known document version to produce the next renderable state.
 - **Next** and **Done** conventions describe explicit transitions between workflow states rather than introducing ad hoc navigation semantics.
 - **Stream** conventions describe long-lived or incremental updates delivered continuously to the client.
 - **Poll** conventions describe repeated reads used when push or stream delivery is unavailable or unnecessary.
@@ -30,5 +31,6 @@ These conventions should be represented explicitly in shared models and configur
 - State and configuration gain a common language for interaction patterns.
 - State documents gain a more consistent lifecycle vocabulary for common app flows.
 - Platform-specific UI bridges can implement consistent behavior for the same interaction type.
+- Clients and delivery services gain an explicit model for incremental rendering updates.
 - New features should align with existing conventions before introducing new interaction categories.
 - Future ADRs or module APIs may refine payload shapes and lifecycle details for each convention.

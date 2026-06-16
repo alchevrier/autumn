@@ -13,6 +13,7 @@ Autumn needs a predictable convention for how configuration-driven frontends des
 Autumn defines a shared set of interaction conventions for common frontend flows.
 
 - Workflows are defined in documents and interpreted by the UI layer rather than hardcoded separately per platform.
+- Those workflow documents act as finite-state machine nodes whose conventions describe the transitions available from the current state.
 - **Create** conventions describe actions that produce a new document, resource, or workflow instance.
 - **Update** conventions describe actions that mutate an existing document or stateful resource.
 - **Stream** conventions describe long-lived or incremental updates delivered continuously to the client.

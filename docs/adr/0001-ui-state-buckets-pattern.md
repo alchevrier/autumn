@@ -12,13 +12,15 @@ Autumn needs a frontend architecture that separates rendering from the content a
 
 Autumn adopts the **UI → State + Buckets** pattern as its core architecture.
 
+- The application is modeled as a finite-state machine.
 - **State** is composed of documents that describe what the UI should show.
+- Each document defines the current state and the transitions that may follow from it.
 - Workflows are also represented as documents so frontend behavior can be defined declaratively.
 - **Buckets** are storage containers that hold documents and images referenced by state.
 - References from state to buckets are considered valid only when the user has access to the referenced content.
 - The UI layer renders from state and does not decide access to bucket content independently.
 
-This makes authorization part of how state is produced, not an afterthought during rendering. It also means the UI can render document-defined workflows without embedding workflow logic in each platform implementation.
+This makes authorization part of how state is produced, not an afterthought during rendering. It also means the UI can render document-defined workflows and state transitions without embedding workflow logic in each platform implementation.
 
 ## Consequences
 

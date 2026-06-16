@@ -85,3 +85,4 @@ Architectural decisions live in [`docs/adr/`](docs/adr) and capture the initial 
 - ADR-0003 — Remote Configuration Versioning
 - ADR-0004 — Country-Aware Configuration API
 - ADR-0005 — Country Resolver Abstraction
+- ADR-0006 — Interaction Conventions

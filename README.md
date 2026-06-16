@@ -14,6 +14,7 @@ Autumn is a Kotlin Multiplatform framework built around the **UI → State + Buc
 - **Workflows** are also modeled as documents, so create, update, delta, stream, poll, and redirect flows can be defined declaratively and rendered by the UI.
 - **Buckets** hold the documents and assets referenced by state.
 - **Configuration** resolves which bucket sources, features, and country-specific behavior are available.
+- **Delivery backends** can validate API keys before returning reduced state or configuration documents.
 
 The key security rule is simple: state must only reference bucket content the user is authorized to access.
 
@@ -22,6 +23,7 @@ The key security rule is simple: state must only reference bucket content the us
 - **Configuration driven**: supports bundled defaults plus remotely updated configuration, caching, and version-aware delivery.
 - **Country-aware configuration**: resolves country-specific behavior and infrastructure from configuration.
 - **Security by design**: unauthorized content is never exposed through state references.
+- **Centralized key management**: API key issuance, validation, rotation, and revocation can live in a dedicated backend.
 - **Native UI rendering**: keeps rendering close to each platform while sharing the application model.
 - **Country Resolver abstraction**: uses a shared interface with platform-specific implementations.
 
@@ -88,3 +90,4 @@ Architectural decisions live in [`docs/adr/`](docs/adr) and capture the initial 
 - ADR-0004 — Country-Aware Configuration API
 - ADR-0005 — Country Resolver Abstraction
 - ADR-0006 — Interaction Conventions
+- ADR-0007 — API Key Validation and Lifecycle Management

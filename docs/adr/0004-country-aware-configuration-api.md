@@ -18,6 +18,7 @@ Autumn uses a country-aware configuration API and companion backend-for-frontend
 - Shared documents may declare platform predicates or similar conditions so iOS, Android, and Web behavior can be expressed in one model.
 - The backend-for-frontend evaluates country and platform conditions, trims irrelevant branches, and returns the reduced document the client should render.
 - When the client already holds a current document version, the backend-for-frontend may return a delta relative to that version instead of always returning the full reduced document.
+- The backend-for-frontend validates presented API keys before returning protected configuration or workflow documents and may rely on a separate key management backend for that decision.
 - Clients remain unaware of other countries' configurations.
 - Clients remain unaware of platform-specific branches or country-specific content that does not apply to them.
 
@@ -28,4 +29,5 @@ Autumn uses a country-aware configuration API and companion backend-for-frontend
 - Server-side country and platform slicing become core parts of configuration and document delivery.
 - Shared documents can stay declarative while delivery remains tailored to each client context.
 - Delta delivery can further reduce payload size when the server and client agree on the current base version.
+- Protected document delivery depends on reliable API key validation before any reduced state is returned.
 - Correct country resolution is essential for compliance and user experience.

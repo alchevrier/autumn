@@ -10,6 +10,7 @@ Autumn is a Kotlin Multiplatform framework built around the **UI → State + Buc
 
 - **UI** renders native views for iOS, Android, and Web.
 - **State** represents the documents describing what the UI should show.
+- **Workflows** are also modeled as documents, so create, update, stream, poll, and redirect flows can be defined declaratively and rendered by the UI.
 - **Buckets** hold the documents and assets referenced by state.
 - **Configuration** resolves which bucket sources, features, and country-specific behavior are available.
 

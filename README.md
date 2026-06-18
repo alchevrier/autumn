@@ -26,6 +26,7 @@ The key security rule is simple: state must only reference bucket content the us
 - **Centralized key management**: API key issuance, validation, rotation, and revocation can live in a dedicated backend.
 - **Native UI rendering**: keeps rendering close to each platform while sharing the application model.
 - **Country Resolver abstraction**: uses a shared interface with platform-specific implementations.
+- **Array-based, pointer-free data structures**: all internal data — configuration tables, resource registries, list items, and form state — is stored in flat pre-allocated arrays accessed by integer index and byte offset. There are no object graphs, no pointer chains, and no GC-visible references between data items. This eliminates pointer indirection overhead, improves cache locality, and removes allocation pressure across the entire data layer.
 
 ## Module overview
 
@@ -91,3 +92,11 @@ Architectural decisions live in [`docs/adr/`](docs/adr) and capture the initial 
 - ADR-0005 — Country Resolver Abstraction
 - ADR-0006 — Interaction Conventions
 - ADR-0007 — API Key Validation and Lifecycle Management
+- ADR-0008 — Client Authentication and Token Management
+- ADR-0009 — IoC Container and Lazy Initialization
+- ADR-0010 — Zero-Allocation JSON Data Model
+- ADR-0011 — Paginated List Rendering and GC Reduction
+- ADR-0012 — Form State Management via Pre-Allocated Slots
+- ADR-0013 — Backend-for-Frontend Routing Configuration
+- ADR-0014 — Event Loop Model and Context Switch Minimisation
+- ADR-0015 — Configuration-Derived Allocation Budget and Compiler Enforcement

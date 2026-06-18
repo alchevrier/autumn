@@ -100,3 +100,4 @@ Architectural decisions live in [`docs/adr/`](docs/adr) and capture the initial 
 - ADR-0013 — Backend-for-Frontend Routing Configuration
 - ADR-0014 — Event Loop Model and Context Switch Minimisation
 - ADR-0015 — Configuration-Derived Allocation Budget and Compiler Enforcement
+- ADR-0016 — Interaction and Entity Schema Contract

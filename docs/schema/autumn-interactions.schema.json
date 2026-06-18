@@ -1,0 +1,547 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://autumn.dev/schema/autumn-interactions.schema.json",
+  "title": "Autumn Interaction Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest",
+    "states"
+  ],
+  "properties": {
+    "manifest": {
+      "$ref": "#/$defs/manifest"
+    },
+    "states": {
+      "type": "object",
+      "description": "Map of stateId to state document.",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/$defs/stateDocument"
+      }
+    }
+  },
+  "$defs": {
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "entitySource",
+        "countryResolverPolicy",
+        "variantPolicy",
+        "cache",
+        "buckets",
+        "resources",
+        "entitySchemas",
+        "entities",
+        "entryStateId",
+        "stateIndex"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entitySource": {
+          "type": "string",
+          "enum": [
+            "bff",
+            "external"
+          ]
+        },
+        "countryResolverPolicy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "variantPolicy": {
+          "$ref": "#/$defs/variantPolicy"
+        },
+        "cache": {
+          "$ref": "#/$defs/configCachePolicy"
+        },
+        "buckets": {
+          "$ref": "#/$defs/buckets"
+        },
+        "resources": {
+          "$ref": "#/$defs/resources"
+        },
+        "entitySchemas": {
+          "$ref": "#/$defs/entitySchemas"
+        },
+        "entities": {
+          "$ref": "#/$defs/entities"
+        },
+        "entryStateId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stateIndex": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "variantPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "source"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "bff",
+            "static"
+          ]
+        }
+      }
+    },
+    "configCachePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "configTtlSeconds",
+        "defaultReadTtlSeconds"
+      ],
+      "properties": {
+        "configTtlSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "defaultReadTtlSeconds": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "buckets": {
+      "type": "object",
+      "description": "Map of bucket type to country-code URL map.",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "minProperties": 1,
+        "additionalProperties": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/$defs/resourceDefinition"
+      }
+    },
+    "resourceDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "path",
+        "action"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "entities": {
+      "type": "object",
+      "description": "Map of entityId to entity contract.",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/$defs/entityDefinition"
+      }
+    },
+    "entitySchemas": {
+      "type": "object",
+      "description": "Map of schemaId to canonical JSON Schema describing entity payload content.",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/$defs/entityPayloadSchema"
+      }
+    },
+    "entityPayloadSchema": {
+      "type": "object",
+      "description": "JSON Schema (draft 2020-12 subset) describing entity payload shape.",
+      "additionalProperties": true,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "object",
+            "array",
+            "string",
+            "number",
+            "integer",
+            "boolean"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "required": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object"
+          }
+        },
+        "items": {
+          "type": "object"
+        },
+        "enum": {
+          "type": "array"
+        }
+      }
+    },
+    "entityDefinition": {
+      "type": "object",
+      "description": "Canonical entity contract referenced by interactions via entityId.",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "schema",
+        "readAction"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "document",
+            "collection"
+          ]
+        },
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Schema identifier. Must match a key in manifest.entitySchemas."
+        },
+        "readAction": {
+          "type": "string",
+          "minLength": 1
+        },
+        "createAction": {
+          "type": "string",
+          "minLength": 1
+        },
+        "updateAction": {
+          "type": "string",
+          "minLength": 1
+        },
+        "deleteAction": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "stateDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "screen",
+        "interactions"
+      ],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "loading",
+            "ready",
+            "empty",
+            "submitting",
+            "success",
+            "error",
+            "completed"
+          ]
+        },
+        "screen": {
+          "type": "string",
+          "minLength": 1
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/assetRef"
+          }
+        },
+        "interactions": {
+          "$ref": "#/$defs/interactions"
+        }
+      }
+    },
+    "assetRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "interactions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "create": {
+          "$ref": "#/$defs/createInteraction"
+        },
+        "update": {
+          "$ref": "#/$defs/updateInteraction"
+        },
+        "read": {
+          "$ref": "#/$defs/readInteraction"
+        },
+        "poll": {
+          "$ref": "#/$defs/pollInteraction"
+        },
+        "next": {
+          "$ref": "#/$defs/nextInteraction"
+        },
+        "done": {
+          "$ref": "#/$defs/doneInteraction"
+        },
+        "redirect": {
+          "$ref": "#/$defs/redirectInteraction"
+        }
+      }
+    },
+    "createInteraction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "entityId"
+      ],
+      "properties": {
+        "action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entityId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "type": "object"
+        }
+      }
+    },
+    "updateInteraction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "entityId"
+      ],
+      "properties": {
+        "action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entityId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "targetId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "type": "object"
+        }
+      }
+    },
+    "readInteraction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "entityId",
+        "cache"
+      ],
+      "properties": {
+        "action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entityId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cache": {
+          "$ref": "#/$defs/readCachePolicy"
+        },
+        "pagination": {
+          "$ref": "#/$defs/pagination"
+        }
+      }
+    },
+    "pollInteraction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "entityId",
+        "intervalMs"
+      ],
+      "properties": {
+        "action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entityId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "intervalMs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "stopWhen": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pagination": {
+          "$ref": "#/$defs/pagination"
+        }
+      }
+    },
+    "nextInteraction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "to"
+      ],
+      "properties": {
+        "to": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "doneInteraction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "to"
+      ],
+      "properties": {
+        "to": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "redirectInteraction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "to",
+        "type"
+      ],
+      "properties": {
+        "to": {
+          "type": "string",
+          "format": "uri"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "external",
+            "internal"
+          ]
+        }
+      }
+    },
+    "readCachePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "ttlSeconds",
+        "strategy"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "ttlSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "strategy": {
+          "type": "string",
+          "enum": [
+            "stale-then-update"
+          ]
+        }
+      }
+    },
+    "pagination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "pageSize",
+        "cursor"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "pageSize": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

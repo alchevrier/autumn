@@ -11,7 +11,7 @@ import kotlin.test.assertContains
 class AllocationVisitorTest {
 
     @Test
-    fun `allocations not marked @LongLived emit a warning`() {
+    fun `allocations not marked @LongLived emit an error`() {
         val kotlinSource = SourceFile.kotlin(
             "main.kt", """
             package dev.autumn.test
@@ -32,12 +32,12 @@ class AllocationVisitorTest {
             languageVersion = "2.1" 
         }.compile()
 
-        assertEquals(KotlinCompilation.ExitCode.OK, result.exitCode, result.messages)
+        assertEquals(KotlinCompilation.ExitCode.COMPILATION_ERROR, result.exitCode, result.messages)
         assertContains(result.messages, "Heap allocation detected in strict zero-allocation scope")
     }
 
     @Test
-    fun `allocations inside @LongLived class do not emit a warning`() {
+    fun `allocations inside @LongLived class do not emit an error`() {
         val kotlinSource = SourceFile.kotlin(
             "main.kt", """
             package dev.autumn.annotations
@@ -62,12 +62,12 @@ class AllocationVisitorTest {
         }.compile()
 
         assertEquals(KotlinCompilation.ExitCode.OK, result.exitCode, result.messages)
-        val hasWarning = result.messages.contains("Heap allocation detected in strict zero-allocation scope")
-        assertEquals(false, hasWarning, "Should not have emitted warning for @LongLived class")
+        val hasError = result.messages.contains("Heap allocation detected in strict zero-allocation scope")
+        assertEquals(false, hasError, "Should not have emitted error for @LongLived class")
     }
 
     @Test
-    fun `primitive wrappers and strings do not emit a warning`() {
+    fun `primitive wrappers and strings do not emit an error`() {
         val kotlinSource = SourceFile.kotlin(
             "main.kt", """
             package dev.autumn.test
@@ -87,12 +87,12 @@ class AllocationVisitorTest {
         }.compile()
 
         assertEquals(KotlinCompilation.ExitCode.OK, result.exitCode, result.messages)
-        val hasWarning = result.messages.contains("Heap allocation detected in strict zero-allocation scope")
-        assertEquals(false, hasWarning, "Should not have emitted warning for primitives and strings")
+        val hasError = result.messages.contains("Heap allocation detected in strict zero-allocation scope")
+        assertEquals(false, hasError, "Should not have emitted error for primitives and strings")
     }
 
     @Test
-    fun `collections allocation on hot path emits a warning`() {
+    fun `collections allocation on hot path emits an error`() {
         val kotlinSource = SourceFile.kotlin(
             "main.kt", """
             package dev.autumn.test
@@ -111,8 +111,8 @@ class AllocationVisitorTest {
             languageVersion = "2.1" 
         }.compile()
 
-        assertEquals(KotlinCompilation.ExitCode.OK, result.exitCode, result.messages)
-        val hasWarning = result.messages.contains("Heap allocation detected in strict zero-allocation scope")
-        assertEquals(true, hasWarning, "Should have emitted warning for collections on hot path")
+        assertEquals(KotlinCompilation.ExitCode.COMPILATION_ERROR, result.exitCode, result.messages)
+        val hasError = result.messages.contains("Heap allocation detected in strict zero-allocation scope")
+        assertEquals(true, hasError, "Should have emitted error for collections on hot path")
     }
 }

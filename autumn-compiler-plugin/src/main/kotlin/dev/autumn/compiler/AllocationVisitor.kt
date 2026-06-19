@@ -71,7 +71,7 @@ class AllocationVisitor(
 
             if (!isSafeType) {
                 messageCollector.report(
-                    CompilerMessageSeverity.WARNING,
+                    CompilerMessageSeverity.ERROR,
                     "Heap allocation detected in strict zero-allocation scope: ${fqName}. Annotate with @LongLived if this is a safe long-lived allocation."
                 )
             }

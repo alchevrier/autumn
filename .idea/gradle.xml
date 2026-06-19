@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="GradleSettings">
+    <option name="linkedExternalProjectsSettings">
+      <GradleProjectSettings>
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/autumn-buckets" />
+            <option value="$PROJECT_DIR$/autumn-compiler-plugin" />
+            <option value="$PROJECT_DIR$/autumn-config" />
+            <option value="$PROJECT_DIR$/autumn-core" />
+            <option value="$PROJECT_DIR$/autumn-gradle-plugin" />
+            <option value="$PROJECT_DIR$/autumn-resolver" />
+            <option value="$PROJECT_DIR$/autumn-state" />
+            <option value="$PROJECT_DIR$/autumn-ui" />
+          </set>
+        </option>
+      </GradleProjectSettings>
+    </option>
+  </component>
+</project>

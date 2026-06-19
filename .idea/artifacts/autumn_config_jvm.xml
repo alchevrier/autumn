@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="autumn-config-jvm">
+    <output-path>$PROJECT_DIR$/autumn-config/build/libs</output-path>
+    <root id="archive" name="autumn-config-jvm.jar">
+      <element id="module-output" name="autumn.autumn-config.jvmMain" />
+    </root>
+  </artifact>
+</component>

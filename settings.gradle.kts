@@ -7,4 +7,6 @@ include(
     "autumn-resolver",
     "autumn-config",
     "autumn-ui",
+    "autumn-compiler-plugin",
+    "autumn-gradle-plugin",
 )

@@ -1,4 +1,4 @@
-# ADR-0008: Circuit-Based Data Pipeline and Interrupt Moderation
+# ADR-0017: Circuit-Based Data Pipeline and Interrupt Moderation
 
 ## Context
 Standard reactive mobile applications process data inside "pipes" of heap allocations (e.g., `Network -> ByteArray -> JSON Deserializer -> List<DTO> -> Flow<State> -> Redraw`). This pipeline induces severe CPU wakeups and uncontrolled garbage collection (GC), causing battery drain, dropped UI frames, and Out-Of-Memory (OOM) network avalanches.

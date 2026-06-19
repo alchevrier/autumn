@@ -65,9 +65,7 @@ class AllocationVisitor(
             val fqName = type.classFqName?.asString() ?: ""
             val isSafeType = type.isPrimitiveType() || 
                              type.isString() ||
-                             fqName.endsWith("Exception") || 
-                             fqName.endsWith("Error") ||
-                             fqName.startsWith("java.lang.")
+                             AllocationExclusions.isSafeType(fqName)
 
             if (!isSafeType) {
                 messageCollector.report(

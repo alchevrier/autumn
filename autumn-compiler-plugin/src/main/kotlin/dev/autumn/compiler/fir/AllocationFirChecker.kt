@@ -11,6 +11,7 @@ import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.references.toResolvedConstructorSymbol
 import org.jetbrains.kotlin.name.ClassId
+import dev.autumn.compiler.AllocationExclusions
 import org.jetbrains.kotlin.name.FqName
 
 object AllocationFirChecker : FirFunctionCallChecker(MppCheckerKind.Common) {
@@ -30,17 +31,13 @@ object AllocationFirChecker : FirFunctionCallChecker(MppCheckerKind.Common) {
             val fqName = classId?.asSingleFqName()?.asString() ?: ""
 
             // Allow basic types (String, primitives) and Exceptions
-            val isSafeType = fqName.endsWith("Exception") || 
-                             fqName.endsWith("Error") ||
-                             fqName.startsWith("java.lang.") ||
-                             fqName == "kotlin.String" ||
-                             fqName.startsWith("kotlin.") && fqName.endsWith("Array") // Need to refine primitive arrays vs generic array
+            // In FIR, primitive arrays or standard primitives on constructors might present as kotlin.IntArray etc.
+            val isNativePrimitive = fqName.startsWith("kotlin.") && fqName.endsWith("Array")
+            
+            // Simplified safe type check for FIR phase mirroring the IR phase logic using shared exclusion logic.
+            val isSafeType = isNativePrimitive || AllocationExclusions.isSafeType(fqName)
 
-            // Simplified safe type check for FIR phase mirroring the IR phase logic
-            // In a complete implementation, this should exactly match IR exclusions.
-            val isNativePrimitiveOrString = isSafeType
-
-            if (!isNativePrimitiveOrString) {
+            if (!isSafeType) {
                 reporter.reportOn(
                     expression.source,
                     AutumnErrors.HEAP_ALLOCATION_IN_STRICT_SCOPE,

@@ -10,6 +10,11 @@ class AutumnIrGenerationExtension(
 ) : IrGenerationExtension {
 
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
+        // 1. Process literal injections for circuit breaker budgets
+        val injectionTransformer = BudgetInjectionTransformer(pluginContext, messageCollector)
+        moduleFragment.transform(injectionTransformer, null)
+
+        // 2. Validate strict zero-allocation boundaries
         val visitor = AllocationVisitor(pluginContext, messageCollector)
         moduleFragment.accept(visitor, null)
     }

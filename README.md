@@ -1,32 +1,26 @@
 # autumn
 
-Configuration driven frontend skeleton for mobile and web.
+Circuit-based, zero-allocation frontend skeleton for mobile and web.
 
 ## What is Autumn?
 
-Autumn is a Kotlin Multiplatform framework built around the **UI → State + Buckets** pattern, with country-aware remote configuration and native UI rendering. It decouples frontend logic from platform-specific rendering while enforcing security by design and compliance through configuration.
+Autumn is a Kotlin Multiplatform framework built around a **circuit-based programming model** for commodity hardware. It decouples core state logic from platform-specific rendering while enforcing strict memory bounds by design. By bypassing the garbage collector and eliminating pointer indirection, Autumn guarantees deterministic, zero-latency rendering using lock-free arrays and emulated hardware interrupts.
 
-## Core pattern: UI → State + Buckets
+## Core pipeline: Socket to Pixel
 
-- Autumn models the application as a finite-state machine where each document defines the current state and available transitions.
-- **UI** renders native views for iOS, Android, and Web.
-- **State** represents the documents describing what the UI should show.
-- **Workflows** are also modeled as documents, so create, update, delta, stream, poll, and redirect flows can be defined declaratively and rendered by the UI.
-- **Buckets** hold the documents and assets referenced by state.
-- **Configuration** resolves which bucket sources, features, and country-specific behavior are available.
-- **Delivery backends** can validate API keys before returning reduced state or configuration documents.
+- **Autumn Network Engine** pulls raw bytes from OS sockets (or local mocks) without manifesting object graphs.
+- **Config & Registry** parses the incoming payloads into pre-allocated, flat integer/byte arrays. 
+- **Epoch State Engine** tracks slot mutations and emits a single coalesced wake-up pulse, dropping all intermediate state tearing.
+- **Native UI (Compose / SwiftUI)** attaches to the hardware wire, waking up exactly once per batch frame to read directly from the underlying physical registries.
 
-The key security rule is simple: state must only reference bucket content the user is authorized to access.
+Because the backend is treated as an external commodity out-of-bounds, Autumn does not care *where* the bytes come from—it only guarantees they are rendered instantly, deterministically, and safely once they cross the network layer.
 
 ## Key features
 
-- **Configuration driven**: supports bundled defaults plus remotely updated configuration, caching, and version-aware delivery.
-- **Country-aware configuration**: resolves country-specific behavior and infrastructure from configuration.
-- **Security by design**: unauthorized content is never exposed through state references.
-- **Centralized key management**: API key issuance, validation, rotation, and revocation can live in a dedicated backend.
-- **Native UI rendering**: keeps rendering close to each platform while sharing the application model.
-- **Country Resolver abstraction**: uses a shared interface with platform-specific implementations.
-- **Array-based, pointer-free data structures**: all internal data — configuration tables, resource registries, list items, and form state — is stored in flat pre-allocated arrays accessed by integer index and byte offset. There are no object graphs, no pointer chains, and no GC-visible references between data items. This eliminates pointer indirection overhead, improves cache locality, and removes allocation pressure across the entire data layer.
+- **Array-based, pointer-free data structures**: all internal data — configuration tables, resource registries, list items, and form state — is stored in flat pre-allocated arrays accessed by integer index and byte offset. There are no object graphs, no pointer chains, and no GC-visible references between data items.
+- **Circuit-Based Reactivity**: replaces traditional flow observers with a single lock-free `IntArray` state engine, ensuring the UI natively coalesces pulses and never chokes on backpressure.
+- **K2 Compiler Enforcement**: physically rewrites the syntax tree at compile-time to enforce hardware partition limits and inject memory boundaries via `@InjectBudget`.
+- **Native UI rendering**: keeps rendering close to each platform while executing a fully shared, static execution pipeline.
 
 ## Module overview
 
@@ -43,28 +37,33 @@ The key security rule is simple: state must only reference bucket content the us
 
 ```text
                         +----------------------+
-                        | Remote Config API    |
-                        | version + country    |
+                        | OS Socket / Network  |
+                        | payloads (JSON/Raw)  |
                         +----------+-----------+
                                    |
                                    v
-+-------------------+    +----------------------+    +----------------------+
-| CountryResolver   +--->| autumn-config        +--->| Bucket source config |
-| chain             |    | bundled + cached     |    | per country          |
-+---------+---------+    +----------+-----------+    +----------+-----------+
-          |                           |                           |
-          |                           v                           v
-          |                +----------------------+    +----------------------+
-          |                | autumn-state         +--->| autumn-buckets       |
-          |                | UI documents         |    | docs + images        |
-          |                +----------+-----------+    +----------+-----------+
-          |                           |
-          v                           v
-                    +----------------------+
-                    | autumn-ui            |
-                    | native rendering     |
-                    | iOS / Android / Web  |
-                    +----------------------+
+                         +-------------------+
+                         | autumn-resolver   |
+                         | (Network Engine)  |
+                         +---------+---------+
+                                   |
+                                   v
+                         +-------------------+
+                         | autumn-config     |
+                         | (Zero-alloc parse)|
+                         +---------+---------+
+                                   |
+                                   v
+                         +-------------------+
+                         | autumn-state      |
+                         | (Epoch Interrupt) |
+                         +---------+---------+
+                                   |
+                                   v
+                         +-------------------+
+                         | autumn-ui         |
+                         | (Canvas Binding)  |
+                         +-------------------+
 ```
 
 ## Repository structure
@@ -92,20 +91,16 @@ Architectural decisions live in [`docs/adr/`](docs/adr) and capture the initial 
 - ADR-0001 — UI → State + Buckets Pattern
 - ADR-0002 — Bucket Source Decoupling via Configuration
 - ADR-0003 — Remote Configuration Versioning
-- ADR-0004 — Country-Aware Configuration API
-- ADR-0005 — Country Resolver Abstraction
 - ADR-0006 — Interaction Conventions
-- ADR-0007 — API Key Validation and Lifecycle Management
-- ADR-0008 — Client Authentication and Token Management
 - ADR-0009 — IoC Container and Lazy Initialization
 - ADR-0010 — Zero-Allocation JSON Data Model
 - ADR-0011 — Paginated List Rendering and GC Reduction
 - ADR-0012 — Form State Management via Pre-Allocated Slots
-- ADR-0013 — Backend-for-Frontend Routing Configuration
 - ADR-0014 — Event Loop Model and Context Switch Minimisation
 - ADR-0015 — Configuration-Derived Allocation Budget and Compiler Enforcement
 - ADR-0016 — Interaction and Entity Schema Contract
 - ADR-0017 — Circuit-Based Data Pipeline and Interrupt Moderation
+- ADR-0018 — The Circuit Skeleton as a Commodity Backend Consumer
 
 ## Integration example (Jetpack Compose)
 

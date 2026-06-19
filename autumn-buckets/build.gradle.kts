@@ -18,12 +18,18 @@ kotlin {
 // Dogfooding the compiler plugin to enforce zero-allocation within our own buckets
 // Temporarily bypassed because multiplatform resolution of custom plugin tasks differs from standard JVM projects.
 /*
-val pluginJarTask = project(":autumn-compiler-plugin").tasks.named<org.gradle.api.tasks.bundling.Jar>("jar")
+val autumnCompilerPlugin by configurations.creating
+dependencies {
+    autumnCompilerPlugin(project(":autumn-compiler-plugin"))
+}
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-    dependsOn(pluginJarTask)
+    dependsOn(autumnCompilerPlugin)
     compilerOptions {
-        freeCompilerArgs.add(pluginJarTask.flatMap { it.archiveFile }.map { "-Xplugin=${it.asFile.absolutePath}" })
+        val pluginFiles = autumnCompilerPlugin.files
+        freeCompilerArgs.addAll(provider {
+            pluginFiles.map { "-Xplugin=${it.absolutePath}" }
+        })
     }
 }
 */

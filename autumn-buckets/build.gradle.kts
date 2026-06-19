@@ -9,7 +9,9 @@ kotlin {
         commonMain.dependencies {
             implementation(project(":autumn-core"))
         }
-        commonTest.dependencies {}
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+        }
     }
 }
 

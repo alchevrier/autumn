@@ -1,4 +1,4 @@
-# ADR-0009: IoC Container and Lazy Initialization
+# ADR-0005: IoC Container and Lazy Initialization
 
 ## Status
 

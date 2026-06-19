@@ -1,4 +1,4 @@
-# ADR-0015: Configuration-Derived Allocation Budget and Compiler Enforcement
+# ADR-0010: Configuration-Derived Allocation Budget and Compiler Enforcement
 
 ## Status
 
@@ -55,5 +55,5 @@ Autumn introduces a configuration-aware allocation contract with compiler-plugin
 - AI-generated changes to Autumn internals become safer by default because allocation violations fail fast with deterministic compiler output, not late-stage profiling surprises.
 - Consuming application code remains unconstrained by default and may opt in to the same checks if desired.
 - The plugin cannot prove allocations in opaque third-party binaries without contracts; wrappers or adapter contracts are required.
-- Runtime verification is still required for non-Kotlin allocations and platform framework behaviour. ADR-0015 complements, not replaces, benchmark-based proof.
+- Runtime verification is still required for non-Kotlin allocations and platform framework behaviour. ADR-0010 complements, not replaces, benchmark-based proof.
 - Future ADRs or module APIs may refine `@LongLived` usage rules, effect graph algorithm, and CI failure format.

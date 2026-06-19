@@ -1,4 +1,4 @@
-# ADR-0010: Zero-Allocation JSON Data Model
+# ADR-0006: Zero-Allocation JSON Data Model
 
 ## Status
 

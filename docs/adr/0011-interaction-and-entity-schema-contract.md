@@ -1,4 +1,4 @@
-# ADR-0016: Interaction and Entity Schema Contract
+# ADR-0011: Interaction and Entity Schema Contract
 
 ## Status
 
@@ -317,7 +317,7 @@ Mapping summary:
 
 ## Consequences
 
-- ADR boundaries become clearer: behavior in ADR-0006, structure in ADR-0016.
+- ADR boundaries become clearer: behavior in ADR-0006, structure in ADR-0011.
 - The schema contract is easier to evolve without polluting interaction semantics.
 - Tooling implementation scope is explicit for validator and compiler plugin work.
 - OpenAPI integration is centralized in one ADR, reducing ambiguity for backend teams.

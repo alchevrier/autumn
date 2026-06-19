@@ -91,16 +91,16 @@ Architectural decisions live in [`docs/adr/`](docs/adr) and capture the initial 
 - ADR-0001 — UI → State + Buckets Pattern
 - ADR-0002 — Bucket Source Decoupling via Configuration
 - ADR-0003 — Remote Configuration Versioning
-- ADR-0006 — Interaction Conventions
-- ADR-0009 — IoC Container and Lazy Initialization
-- ADR-0010 — Zero-Allocation JSON Data Model
-- ADR-0011 — Paginated List Rendering and GC Reduction
-- ADR-0012 — Form State Management via Pre-Allocated Slots
-- ADR-0014 — Event Loop Model and Context Switch Minimisation
-- ADR-0015 — Configuration-Derived Allocation Budget and Compiler Enforcement
-- ADR-0016 — Interaction and Entity Schema Contract
-- ADR-0017 — Circuit-Based Data Pipeline and Interrupt Moderation
-- ADR-0018 — The Circuit Skeleton as a Commodity Backend Consumer
+- ADR-0004 — Interaction Conventions
+- ADR-0005 — IoC Container and Lazy Initialization
+- ADR-0006 — Zero-Allocation JSON Data Model
+- ADR-0007 — Paginated List Rendering and GC Reduction
+- ADR-0008 — Form State Management via Pre-Allocated Slots
+- ADR-0009 — Event Loop Model and Context Switch Minimisation
+- ADR-0010 — Configuration-Derived Allocation Budget and Compiler Enforcement
+- ADR-0011 — Interaction and Entity Schema Contract
+- ADR-0012 — Circuit-Based Data Pipeline and Interrupt Moderation
+- ADR-0013 — The Circuit Skeleton as a Commodity Backend Consumer
 
 ## Integration example (Jetpack Compose)
 

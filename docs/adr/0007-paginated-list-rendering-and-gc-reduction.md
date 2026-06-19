@@ -1,4 +1,4 @@
-# ADR-0011: Paginated List Rendering and GC Reduction
+# ADR-0007: Paginated List Rendering and GC Reduction
 
 ## Status
 

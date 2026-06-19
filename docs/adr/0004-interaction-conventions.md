@@ -1,4 +1,4 @@
-# ADR-0006: Interaction Conventions
+# ADR-0004: Interaction Conventions
 
 ## Status
 
@@ -187,7 +187,7 @@ These conventions should be represented explicitly in shared models and configur
 
 Schema boundary:
 
-- ADR-0006 defines behavioral interaction conventions only (Create, Update, Read, Poll, Next, Done, Redirect).
+- ADR-0004 defines behavioral interaction conventions only (Create, Update, Read, Poll, Next, Done, Redirect).
 - Structural schema, entity definition contract, entity payload schema content, and OpenAPI alignment are defined in ADR-0016.
 - The normative JSON Schema artifact remains `docs/schema/autumn-interactions.schema.json`.
 

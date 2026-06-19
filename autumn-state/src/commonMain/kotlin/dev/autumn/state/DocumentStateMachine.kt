@@ -14,19 +14,21 @@ import dev.autumn.annotations.LongLived
  * @param maxStates The maximum number of states.
  * @param maxEvents The maximum number of events available.
  */
-@LongLived
 class DocumentStateMachine(
     private val maxStates: Int,
     private val maxEvents: Int
 ) {
     // 2D Matrix flattened into 1D (fromState X event -> toState)
     // Size = maxStates * maxEvents. Defaults to -1 (Illegal Transition).
+    @LongLived
     private val transitions = IntArray(maxStates * maxEvents) { -1 }
     
     // Maps each state directly to a logical Document Bucket ID to render
+    @LongLived
     private val documents = IntArray(maxStates) { -1 }
     
     // Up to 8 observers strictly sized to avert Iterator/ArrayList mutations
+    @LongLived
     private val observers = arrayOfNulls<StateObserver>(8)
     private var observerCount = 0
 

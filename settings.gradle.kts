@@ -20,4 +20,5 @@ include(
     "autumn-gradle-plugin",
     "autumn-sandbox",
     "autumn-bff",
+    "autumn-admin",
 )

@@ -1,6 +1,7 @@
 package dev.autumn.bff
 
 import dev.autumn.bff.module
+import dev.autumn.bff.plugins.KeyCache
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
@@ -8,10 +9,17 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class AutumnBffApplicationTest {
+
+    @BeforeTest
+    fun setup() {
+        KeyCache.activeKeys = setOf("ak_live_x892njkasd891", "ak_test_j123n12o3n123")
+        KeyCache.revokedKeys = setOf("ak_live_revoked99999")
+    }
 
     @Test
     fun `test missing API Key returns 401 Unauthorized`() = testApplication {

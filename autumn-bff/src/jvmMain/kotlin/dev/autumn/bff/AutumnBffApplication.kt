@@ -1,6 +1,7 @@
 package dev.autumn.bff
 
 import dev.autumn.bff.plugins.ApiKeyValidationPlugin
+import dev.autumn.bff.plugins.KeyCache
 import dev.autumn.bff.provider.ConfigurationProvider
 import dev.autumn.bff.resolver.CountryResolver
 import io.ktor.http.HttpStatusCode
@@ -11,7 +12,6 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.header
-import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
@@ -33,6 +33,11 @@ fun Application.module() {
     install(ApiKeyValidationPlugin)
 
     routing {
+        get("/sync-keys") {
+            KeyCache.sync()
+            call.respondText("Keys Synchronized", status = HttpStatusCode.OK)
+        }
+
         get("/config") {
             val deviceId = call.request.header("X-Device-Id") ?: "anonymous"
             
@@ -42,7 +47,7 @@ fun Application.module() {
             // 2. Evaluate Config & Cohorts
             val tailoredConfig = ConfigurationProvider.provideForDevice(deviceId, country)
             
-            // 3. Serialize and Respond (Normally we'd use Content Negotiation, but keeping it raw here to mirror the circuit API)
+            // 3. Serialize and Respond
             val jsonPayload = Json.encodeToString(tailoredConfig)
             
             call.respondText(jsonPayload, io.ktor.http.ContentType.Application.Json, HttpStatusCode.OK)

@@ -18,7 +18,7 @@ class AutumnGradlePlugin : KotlinCompilerPluginSupportPlugin {
     override fun getPluginArtifact(): SubpluginArtifact = SubpluginArtifact(
         groupId = "dev.autumn",
         artifactId = "autumn-compiler-plugin",
-        version = "1.0.0-SNAPSHOT" // In a real project, this aligns with project version
+        version = "1.0.2" // In a real project, this aligns with project version
     )
 
     override fun isApplicable(kotlinCompilation: KotlinCompilation<*>): Boolean {

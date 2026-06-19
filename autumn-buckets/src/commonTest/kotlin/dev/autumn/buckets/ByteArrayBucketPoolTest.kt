@@ -29,9 +29,9 @@ class PointBucketPool(capacity: Int) : ByteArrayBucketPool<PointDecoder>(
     flyweight = PointDecoder()
 )
 
+@LongLived
 class ByteArrayBucketPoolTest {
 
-    @LongLived
     @Test
     fun `test adding and reading points without allocation using SBE`() {
         val pool = PointBucketPool(capacity = 3)
@@ -64,7 +64,6 @@ class ByteArrayBucketPoolTest {
         assertEquals(100, p0.x) 
     }
 
-    @LongLived
     @Test
     fun `test capacity boundaries and clearing`() {
         val pool = PointBucketPool(capacity = 2)
@@ -85,7 +84,6 @@ class ByteArrayBucketPoolTest {
         assertEquals(8, pool[0].x)
     }
 
-    @LongLived
     @Test
     fun `test simulated UI iteration loop`() {
         val pool = PointBucketPool(capacity = 100)

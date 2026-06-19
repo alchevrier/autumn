@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "dev.autumn"
-version = "1.0.0-SNAPSHOT"
+version = "1.0.2"
 
 tasks.withType<JavaCompile> {
     sourceCompatibility = "23"

@@ -90,4 +90,29 @@ class AllocationVisitorTest {
         val hasWarning = result.messages.contains("Heap allocation detected in strict zero-allocation scope")
         assertEquals(false, hasWarning, "Should not have emitted warning for primitives and strings")
     }
+
+    @Test
+    fun `collections allocation on hot path emits a warning`() {
+        val kotlinSource = SourceFile.kotlin(
+            "main.kt", """
+            package dev.autumn.test
+            
+            fun doSomething() {
+                val list = ArrayList<String>() // Should trigger warning
+            }
+            """.trimIndent()
+        )
+
+        val result = KotlinCompilation().apply {
+            sources = listOf(kotlinSource)
+            compilerPluginRegistrars = listOf(AutumnCompilerPluginRegistrar())
+            inheritClassPath = true
+            messageOutputStream = System.out
+            languageVersion = "2.1" 
+        }.compile()
+
+        assertEquals(KotlinCompilation.ExitCode.OK, result.exitCode, result.messages)
+        val hasWarning = result.messages.contains("Heap allocation detected in strict zero-allocation scope")
+        assertEquals(true, hasWarning, "Should have emitted warning for collections on hot path")
+    }
 }

@@ -32,8 +32,15 @@ interface RequestHandoff {
      * writing dimension coordinates and states directly into the static matrices at [slotIndex].
      *
      * @param slotIndex The claimed slot where the hardware-sympathetic matrices should be updated.
-     * @param endpoint The resource to fetch.
+     * @param endpoint The resource to fetch or post to.
+     * @param method The HTTP method (GET, POST, etc).
+     * @param requestBody The optional raw bytes to send.
      * @return A Result indicating only success or failure. The data is already in place.
      */
-    suspend fun executeInPlace(slotIndex: Int, endpoint: String): Result<Unit>
+    suspend fun executeInPlace(
+        slotIndex: Int, 
+        endpoint: String, 
+        method: String = "GET", 
+        requestBody: ByteArray? = null
+    ): Result<Unit>
 }

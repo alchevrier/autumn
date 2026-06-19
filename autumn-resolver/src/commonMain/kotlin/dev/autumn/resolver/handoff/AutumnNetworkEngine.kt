@@ -21,9 +21,14 @@ class AutumnNetworkEngine(
         slotManager.releaseSlot(slotIndex)
     }
 
-    override suspend fun executeInPlace(slotIndex: Int, endpoint: String): Result<Unit> {
-        // 1. Fetch raw bytes from the OS Socket layer
-        val requestResult = networkClient.getBytes(endpoint)
+    override suspend fun executeInPlace(
+        slotIndex: Int, 
+        endpoint: String, 
+        method: String, 
+        requestBody: ByteArray?
+    ): Result<Unit> {
+        // 1. Send/Fetch raw bytes to/from the OS Socket layer
+        val requestResult = networkClient.executeRaw(endpoint, method, requestBody)
 
         return requestResult.fold(
             onSuccess = { bytes ->

@@ -11,7 +11,11 @@ package dev.autumn.resolver.handoff
 interface RawNetworkClient {
     /**
      * Executes the HTTP request.
+     * 
+     * @param endpoint The route or URL to access.
+     * @param method The HTTP method (GET, POST, etc).
+     * @param requestBody An optional, pre-allocated raw byte buffer for sending data.
      * @return The exact Byte payload of the response, or failure if network/OS errors occurred.
      */
-    suspend fun getBytes(endpoint: String): Result<ByteArray>
+    suspend fun executeRaw(endpoint: String, method: String = "GET", requestBody: ByteArray? = null): Result<ByteArray>
 }

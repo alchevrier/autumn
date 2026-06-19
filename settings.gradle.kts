@@ -19,4 +19,5 @@ include(
     "autumn-compiler-plugin",
     "autumn-gradle-plugin",
     "autumn-sandbox",
+    "autumn-bff",
 )

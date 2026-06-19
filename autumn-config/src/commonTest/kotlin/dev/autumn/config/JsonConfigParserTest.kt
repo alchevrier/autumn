@@ -9,8 +9,8 @@ class JsonConfigParserTest {
 
     @Test
     fun `test parsing full autumn interaction manifest without allocation`() {
-        val config = ConfigManager(maxResources = 100)
-        val registry = StringRegistry(maxStrings = 100)
+        
+        
         val parser = JsonConfigParser()
 
         val fullSchemaBytes = """
@@ -61,6 +61,9 @@ class JsonConfigParserTest {
           }
         }
         """.trimIndent().encodeToByteArray()
+
+        val config = ConfigManager(maxResources = BudgetCalculator.calculateConfigResourceBudget(declaredResources = 2))
+        val registry = StringRegistry(maxStrings = 20)
 
         parser.parse(fullSchemaBytes, config, registry)
 

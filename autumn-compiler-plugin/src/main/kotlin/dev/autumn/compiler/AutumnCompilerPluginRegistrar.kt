@@ -6,6 +6,8 @@ import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import org.jetbrains.kotlin.config.CompilerConfiguration
+import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrarAdapter
+import dev.autumn.compiler.fir.AutumnFirExtensionRegistrar
 
 @OptIn(ExperimentalCompilerApi::class)
 class AutumnCompilerPluginRegistrar : CompilerPluginRegistrar() {
@@ -15,5 +17,6 @@ class AutumnCompilerPluginRegistrar : CompilerPluginRegistrar() {
     override fun ExtensionStorage.registerExtensions(configuration: CompilerConfiguration) {
         val messageCollector = configuration.get(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY, MessageCollector.NONE)
         IrGenerationExtension.registerExtension(AutumnIrGenerationExtension(messageCollector))
+        FirExtensionRegistrarAdapter.registerExtension(AutumnFirExtensionRegistrar())
     }
 }

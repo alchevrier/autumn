@@ -4,52 +4,45 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
-// 1. The Flyweight View: UI interacts with this object. No memory allocated on reads.
-class PointView(private val pool: PointBucketPool) {
-    var currentIndex: Int = 0
-    val x: Int get() = pool.getX(currentIndex)
-    val y: Int get() = pool.getY(currentIndex)
-}
-
-// 2. The Bucket implementation mapping logical objects to the raw byte array
-class PointBucketPool(capacity: Int) : ByteArrayBucketPool<PointView>(capacity, recordSizeInBytes = 8) {
-    // Single shared instance for UI iteration (zero-allocation boundary)
-    private val flyweight = PointView(this)
-
-    // Byte offsets inside a single record (Int = 4 bytes)
+// 1. The SBE Flyweight Decoder
+// Extends SbeDecoder which natively holds `buffer` and `offset` cursors.
+class PointDecoder : SbeDecoder() {
+    // Exact byte offsets matching the strict SBE schema
     private val OFFSET_X = 0
     private val OFFSET_Y = 4
 
-    fun getX(index: Int): Int = readInt((index * recordSizeInBytes) + OFFSET_X)
-    fun getY(index: Int): Int = readInt((index * recordSizeInBytes) + OFFSET_Y)
-    
-    private fun setX(index: Int, value: Int) = writeInt((index * recordSizeInBytes) + OFFSET_X, value)
-    private fun setY(index: Int, value: Int) = writeInt((index * recordSizeInBytes) + OFFSET_Y, value)
+    var x: Int
+        get() = readInt(OFFSET_X)
+        set(value) = writeInt(OFFSET_X, value)
 
-    fun add(x: Int, y: Int) {
-        if (size >= capacity) throw IllegalStateException("Bucket capacity exceeded")
-        setX(size, x)
-        setY(size, y)
-        size++ // increment active items
-    }
-
-    override fun get(index: Int): PointView {
-        if (index < 0 || index >= size) throw IndexOutOfBoundsException("Index $index out of bounds")
-        // Simply shift the cursor of our shared object!
-        flyweight.currentIndex = index
-        return flyweight
-    }
+    var y: Int
+        get() = readInt(OFFSET_Y)
+        set(value) = writeInt(OFFSET_Y, value)
 }
+
+// 2. The Bucket implementation mapping logical objects to the raw byte array
+class PointBucketPool(capacity: Int) : ByteArrayBucketPool<PointDecoder>(
+    capacity = capacity, 
+    recordSizeInBytes = 8, 
+    flyweight = PointDecoder()
+)
 
 class ByteArrayBucketPoolTest {
 
     @Test
-    fun `test adding and reading points without allocation`() {
+    fun `test adding and reading points without allocation using SBE`() {
         val pool = PointBucketPool(capacity = 3)
         
-        // Background logic adds elements directly via integers
-        pool.add(10, 20)
-        pool.add(100, 200)
+        // Background logic appends elements directly using the encoder/decoder flyweight
+        pool.append().apply {
+            x = 10
+            y = 20
+        }
+        
+        pool.append().apply {
+            x = 100
+            y = 200
+        }
 
         assertEquals(2, pool.size)
 
@@ -64,19 +57,18 @@ class ByteArrayBucketPoolTest {
         assertEquals(200, p1.y)
         
         // ZERO-ALLOCATION PROOF: p0 and p1 point to the SAME flyweight object in memory!
-        // Both now reflect index 1 since we last asked for pool[1].
-        // This is safe because UI widgets pull the data iteratively right when they render it.
+        // Both now reflect index 1 since we last asked for pool[1] which shifted the decoder cursor!
         assertEquals(100, p0.x) 
     }
 
     @Test
     fun `test capacity boundaries and clearing`() {
         val pool = PointBucketPool(capacity = 2)
-        pool.add(5, 5)
-        pool.add(6, 6)
+        pool.append().apply { x = 5; y = 5 }
+        pool.append().apply { x = 6; y = 6 }
 
         assertFailsWith<IllegalStateException> {
-            pool.add(7, 7) // Exceeds capacity of 2
+            pool.append() // Exceeds capacity of 2
         }
 
         // Logic wipes the bucket
@@ -84,7 +76,7 @@ class ByteArrayBucketPoolTest {
         assertEquals(0, pool.size)
 
         // Memory was never re-allocated, we can just insert over the old bytes!
-        pool.add(8, 8)
+        pool.append().apply { x = 8; y = 8 }
         assertEquals(1, pool.size)
         assertEquals(8, pool[0].x)
     }
@@ -95,7 +87,10 @@ class ByteArrayBucketPoolTest {
         
         // Simulate background loop adding 50 items
         for (i in 0 until 50) {
-            pool.add(x = i, y = i * 2)
+            pool.append().apply {
+                x = i
+                y = i * 2
+            }
         }
 
         // Simulate UI Rendering Loop (Zero Allocations on exactly 50 reads!)

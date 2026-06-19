@@ -17,6 +17,12 @@ interface BucketPool<T> {
      */
     operator fun get(index: Int): T
 
+    /**
+     * Appends a new item to the pool, incrementing the size, and returns the flyweight
+     * positioned at the newly allocated slot so fields can be populated.
+     */
+    fun append(): T
+
     /** 
      * Resets the pool logic, marking all elements as free.
      */

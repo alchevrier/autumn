@@ -3,13 +3,14 @@ package dev.autumn.buckets
 import dev.autumn.annotations.LongLived
 
 /**
- * Base implementation of an Array-of-Structs (AoS) backed by a flat [ByteArray].
- * This avoids pointer chasing and object overhead on hot paths.
+ * Base implementation of an Array-of-Structs (AoS) backed by a flat [ByteArray],
+ * mapped to a strictly evaluated Simple Binary Encoding (SBE) flyweight.
  */
 @LongLived
-abstract class ByteArrayBucketPool<T>(
+abstract class ByteArrayBucketPool<T : SbeDecoder>(
     override val capacity: Int,
-    protected val recordSizeInBytes: Int
+    protected val recordSizeInBytes: Int,
+    private val flyweight: T
 ) : BucketPool<T> {
 
     // The backend array pre-allocated at startup for the lifetime of this pool.
@@ -25,23 +26,16 @@ abstract class ByteArrayBucketPool<T>(
         // Old data is logically inaccessible because size = 0.
     }
 
-    /**
-     * Helper to read an Int directly from the byte array.
-     */
-    protected fun readInt(offset: Int): Int {
-        return (buffer[offset].toInt() and 0xFF shl 24) or
-               (buffer[offset + 1].toInt() and 0xFF shl 16) or
-               (buffer[offset + 2].toInt() and 0xFF shl 8) or
-               (buffer[offset + 3].toInt() and 0xFF)
+    override fun get(index: Int): T {
+        if (index < 0 || index >= size) throw IndexOutOfBoundsException("Index $index out of bounds")
+        flyweight.wrap(buffer, index * recordSizeInBytes)
+        return flyweight
     }
 
-    /**
-     * Helper to write an Int directly into the byte array.
-     */
-    protected fun writeInt(offset: Int, value: Int) {
-        buffer[offset] = (value ushr 24).toByte()
-        buffer[offset + 1] = (value ushr 16).toByte()
-        buffer[offset + 2] = (value ushr 8).toByte()
-        buffer[offset + 3] = value.toByte()
+    override fun append(): T {
+        if (size >= capacity) throw IllegalStateException("Bucket capacity exceeded")
+        flyweight.wrap(buffer, size * recordSizeInBytes)
+        size++
+        return flyweight
     }
 }

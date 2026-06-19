@@ -11,6 +11,7 @@ kotlin {
             implementation(project(":autumn-core"))
             implementation(project(":autumn-state"))
             implementation(project(":autumn-config"))
+            implementation(project(":autumn-resolver"))
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
         }
         commonTest.dependencies {

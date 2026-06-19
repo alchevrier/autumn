@@ -12,6 +12,9 @@ import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 import org.jetbrains.kotlin.ir.visitors.acceptVoid
 import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.ir.declarations.IrProperty
+import org.jetbrains.kotlin.ir.declarations.IrField
+import org.jetbrains.kotlin.ir.declarations.IrAnonymousInitializer
 import org.jetbrains.kotlin.ir.types.isString
 import org.jetbrains.kotlin.ir.types.isPrimitiveType
 import org.jetbrains.kotlin.ir.types.classFqName
@@ -44,6 +47,24 @@ class AllocationVisitor(
         declarationStack.removeLast()
     }
 
+    override fun visitProperty(declaration: IrProperty) {
+        declarationStack.add(declaration)
+        super.visitProperty(declaration)
+        declarationStack.removeLast()
+    }
+
+    override fun visitField(declaration: IrField) {
+        declarationStack.add(declaration)
+        super.visitField(declaration)
+        declarationStack.removeLast()
+    }
+
+    override fun visitAnonymousInitializer(declaration: IrAnonymousInitializer) {
+        declarationStack.add(declaration)
+        super.visitAnonymousInitializer(declaration)
+        declarationStack.removeLast()
+    }
+
     override fun visitConstructorCall(expression: IrConstructorCall) {
         super.visitConstructorCall(expression)
 
@@ -52,6 +73,9 @@ class AllocationVisitor(
             when (element) {
                 is IrClass -> element.hasAnnotation(LONG_LIVED_FQ_NAME)
                 is IrFunction -> element.hasAnnotation(LONG_LIVED_FQ_NAME)
+                is IrProperty -> element.hasAnnotation(LONG_LIVED_FQ_NAME)
+                is IrField -> element.hasAnnotation(LONG_LIVED_FQ_NAME)
+                is IrAnonymousInitializer -> element.hasAnnotation(LONG_LIVED_FQ_NAME)
                 else -> false
             }
         }
@@ -63,7 +87,7 @@ class AllocationVisitor(
             // optimized away or required on slow paths (e.g. throwing error).
             // Note: We deliberately DO NOT allow kotlin.collections here to enforce custom pool usage.
             val fqName = type.classFqName?.asString() ?: ""
-            val isSafeType = type.isPrimitiveType() || 
+            val isSafeType = type.isPrimitiveType() || fqName.endsWith("Array") || 
                              type.isString() ||
                              AllocationExclusions.isSafeType(fqName)
 

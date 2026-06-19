@@ -1,6 +1,10 @@
 plugins {
     kotlin("jvm")
+    `maven-publish`
 }
+
+group = "dev.autumn"
+version = "1.0.0-SNAPSHOT"
 
 tasks.withType<JavaCompile> {
     sourceCompatibility = "23"
@@ -14,3 +18,11 @@ dependencies {
 }
 
 // Ensure the compiler plugin is published/packaged appropriately if needed later.
+
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            from(components["java"])
+        }
+    }
+}

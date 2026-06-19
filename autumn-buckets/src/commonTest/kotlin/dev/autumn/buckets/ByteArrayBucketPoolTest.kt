@@ -3,6 +3,7 @@ package dev.autumn.buckets
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import dev.autumn.annotations.LongLived
 
 // 1. The SBE Flyweight Decoder
 // Extends SbeDecoder which natively holds `buffer` and `offset` cursors.
@@ -21,6 +22,7 @@ class PointDecoder : SbeDecoder() {
 }
 
 // 2. The Bucket implementation mapping logical objects to the raw byte array
+@LongLived
 class PointBucketPool(capacity: Int) : ByteArrayBucketPool<PointDecoder>(
     capacity = capacity, 
     recordSizeInBytes = 8, 
@@ -29,6 +31,7 @@ class PointBucketPool(capacity: Int) : ByteArrayBucketPool<PointDecoder>(
 
 class ByteArrayBucketPoolTest {
 
+    @LongLived
     @Test
     fun `test adding and reading points without allocation using SBE`() {
         val pool = PointBucketPool(capacity = 3)
@@ -61,6 +64,7 @@ class ByteArrayBucketPoolTest {
         assertEquals(100, p0.x) 
     }
 
+    @LongLived
     @Test
     fun `test capacity boundaries and clearing`() {
         val pool = PointBucketPool(capacity = 2)
@@ -81,6 +85,7 @@ class ByteArrayBucketPoolTest {
         assertEquals(8, pool[0].x)
     }
 
+    @LongLived
     @Test
     fun `test simulated UI iteration loop`() {
         val pool = PointBucketPool(capacity = 100)

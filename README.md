@@ -36,8 +36,6 @@ The key security rule is simple: state must only reference bucket content the us
 - `autumn-state` — hardware-sympathetic reactivity engine (`EpochStateEngine`) replacing traditional Flow observers.
 - `autumn-buckets` — bucket abstractions mapping configuration pointers to raw image/document strings.
 - `autumn-resolver` — deterministic network boundary (`AutumnNetworkEngine`) executing in-place handoffs.
-- `autumn-bff` — backend-for-frontend resolving network bounds, A/B logic, and API key validation.
-- `autumn-admin` — internal REST API microservice to issue and revoke the API keys consumed by the BFF.
 - `autumn-config` — zero-allocation payload string registry and hardware matrix limit calculator (`JsonConfigParser`).
 - `autumn-ui` — native rendering bridge linking platform Canvas text exactly to byte indices (`AutumnCircuitBinder`, `AutumnMotherboard`).
 
@@ -77,8 +75,6 @@ autumn-core/               # Compiler pacts and limits
 autumn-compiler-plugin/    # K2 AST visitor enforcing allocations
 autumn-gradle-plugin/      # Gradle hooks for plugin injection
 autumn-resolver/           # In-place Network Handoff API
-autumn-admin/              # Internal Key Issuance REST API
-autumn-bff/                # Country, cohort resolution, API Keys
 autumn-config/             # Zero-alloc JSON parsing and registries
 autumn-buckets/            # Content offset mappers
 autumn-state/              # Circuit-based Epoch observer

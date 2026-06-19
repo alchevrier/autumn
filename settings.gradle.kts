@@ -18,7 +18,5 @@ include(
     "autumn-ui",
     "autumn-compiler-plugin",
     "autumn-gradle-plugin",
-    "autumn-sandbox",
-    "autumn-bff",
-    "autumn-admin",
+    "autumn-sandbox"
 )

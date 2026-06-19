@@ -11,6 +11,7 @@ kotlin {
                 implementation(project(":autumn-core"))
                 implementation("io.ktor:ktor-server-core:2.3.11")
                 implementation("io.ktor:ktor-server-netty:2.3.11")
+                implementation("io.ktor:ktor-server-status-pages:2.3.11")
                 implementation("io.ktor:ktor-server-content-negotiation:2.3.11")
                 implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.11")
                 implementation("org.slf4j:slf4j-simple:2.0.12")

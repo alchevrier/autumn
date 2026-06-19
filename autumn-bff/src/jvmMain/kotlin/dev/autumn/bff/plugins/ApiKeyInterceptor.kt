@@ -5,6 +5,7 @@ import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.createApplicationPlugin
@@ -30,7 +31,9 @@ object KeyCache {
 
     suspend fun sync() {
         try {
-            val response: ApiKeyResponse = client.get("http://127.0.0.1:8081/internal/keys").body()
+            val response: ApiKeyResponse = client.get("http://127.0.0.1:8081/internal/keys") {
+                header("Authorization", "Bearer system-admin-token")
+            }.body()
             activeKeys = response.activeKeys
             revokedKeys = response.revokedKeys
         } catch (e: Exception) {

@@ -2,9 +2,13 @@ package dev.autumn.admin
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.call
+import io.ktor.server.application.install
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
+import io.ktor.server.plugins.statuspages.StatusPages
+import io.ktor.server.request.header
 import io.ktor.server.request.receiveText
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.delete
@@ -12,6 +16,31 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import java.util.UUID
+
+enum class Role { USER, ADMIN }
+
+data class UserAccount(val id: String, val token: String, val role: Role)
+
+object UserRepository {
+    val accounts = mapOf(
+        "system-admin-token" to UserAccount("admin-1", "system-admin-token", Role.ADMIN),
+        "dev-user-token" to UserAccount("user-1", "dev-user-token", Role.USER)
+    )
+}
+
+class AuthorizationException(val code: HttpStatusCode, message: String) : Exception(message)
+
+fun ApplicationCall.requireRole(vararg roles: Role) {
+    val token = request.header("Authorization")?.removePrefix("Bearer ") 
+        ?: throw AuthorizationException(HttpStatusCode.Unauthorized, "{\"error\":\"Missing Authorization header\"}")
+    
+    val user = UserRepository.accounts[token] 
+        ?: throw AuthorizationException(HttpStatusCode.Unauthorized, "{\"error\":\"Invalid token\"}")
+        
+    if (user.role !in roles && !(roles.contains(Role.USER) && user.role == Role.ADMIN)) {
+        throw AuthorizationException(HttpStatusCode.Forbidden, "{\"error\":\"Insufficient permissions\"}")
+    }
+}
 
 data class ApiKeyRecord(val id: String, val name: String, val secret: String)
 
@@ -83,27 +112,32 @@ fun main() {
         .start(wait = true)
 }
 
-// parsing helpers for testing manual JSON without heavy Kotlinx maps
 fun parseId(json: String): String = json.substringAfter("\"id\":\"").substringBefore("\"")
 fun parseName(json: String): String = json.substringAfter("\"name\":\"").substringBefore("\"")
 fun parseSecret(json: String): String = json.substringAfter("\"secret\":\"").substringBefore("\"")
 
 fun Application.module() {
+    install(StatusPages) {
+        exception<AuthorizationException> { call, cause ->
+            call.respondText(cause.message ?: "", io.ktor.http.ContentType.Application.Json, cause.code)
+        }
+    }
+
     routing {
-        // UI Facing Endpoint: NEVER emits the raw secrets, only safe metadata
+        // UI Facing Endpoint: Requires USER or ADMIN
         get("/keys") {
+            call.requireRole(Role.USER, Role.ADMIN)
             val activeList = KeyRepository.activeRecords.joinToString(",") { "{\"id\":\"${it.id}\", \"name\":\"${it.name}\"}" }
             val revokedList = KeyRepository.revokedRecords.joinToString(",") { "{\"id\":\"${it.id}\", \"name\":\"${it.name}\"}" }
             val json = "{\"activeKeys\":[$activeList], \"revokedKeys\":[$revokedList]}"
             call.respondText(json, io.ktor.http.ContentType.Application.Json)
         }
 
-        // Internal BFF Facing Endpoint: Emits full arrays of active string targets
+        // Internal BFF Facing Endpoint: Requires ADMIN
         get("/internal/keys") {
+            call.requireRole(Role.ADMIN)
             val activeList = KeyRepository.activeRecords.joinToString("\",\"", "[\"", "\"]") { it.secret }
             val revokedList = KeyRepository.revokedRecords.joinToString("\",\"", "[\"", "\"]") { it.secret }
-            // If empty, joinToString won't quite match standard brackets perfectly without conditional bounds, 
-            // but for simplicity it ensures format matches the BFF expectations directly.
             val aFormat = if (KeyRepository.activeRecords.isEmpty()) "[]" else activeList
             val rFormat = if (KeyRepository.revokedRecords.isEmpty()) "[]" else revokedList
             val json = "{\"activeKeys\":$aFormat, \"revokedKeys\":$rFormat}"
@@ -111,15 +145,16 @@ fun Application.module() {
         }
 
         post("/keys/generate") {
+            call.requireRole(Role.USER, Role.ADMIN)
             val reqText = call.receiveText()
             val name = parseName(reqText)
             val record = KeyRepository.generate(name)
-            // Emits the SECRET literally exactly ONCE.
             val json = "{\"id\":\"${record.id}\", \"name\":\"${record.name}\", \"secret\":\"${record.secret}\"}"
             call.respondText(json, io.ktor.http.ContentType.Application.Json, HttpStatusCode.Created)
         }
 
         post("/keys/provide") {
+            call.requireRole(Role.USER, Role.ADMIN)
             val reqText = call.receiveText()
             val id = parseId(reqText)
             val name = parseName(reqText)
@@ -129,6 +164,7 @@ fun Application.module() {
         }
 
         delete("/keys/revoke") {
+            call.requireRole(Role.USER, Role.ADMIN)
             val reqText = call.receiveText()
             val id = parseId(reqText)
             KeyRepository.revokeById(id)

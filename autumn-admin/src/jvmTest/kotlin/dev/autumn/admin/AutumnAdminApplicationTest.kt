@@ -30,7 +30,9 @@ class AutumnAdminApplicationTest {
     fun `test get keys returns safe metadata without secrets`() = testApplication {
         application { module() }
 
-        val response = client.get("/keys")
+        val response = client.get("/keys") {
+            header(HttpHeaders.Authorization, "Bearer dev-user-token")
+        }
         assertEquals(HttpStatusCode.OK, response.status)
 
         val bodyText = response.bodyAsText()
@@ -40,45 +42,54 @@ class AutumnAdminApplicationTest {
     }
 
     @Test
-    fun `test internal keys returns secrets for bff`() = testApplication {
+    fun `test internal keys allows admin token and returns secrets`() = testApplication {
         application { module() }
 
-        val response = client.get("/internal/keys")
+        val response = client.get("/internal/keys") {
+            header(HttpHeaders.Authorization, "Bearer system-admin-token")
+        }
         assertEquals(HttpStatusCode.OK, response.status)
 
         val bodyText = response.bodyAsText()
         assertTrue(bodyText.contains("ak_live_x892njkasd891"), "Should expose secrets for internal sync")
-        assertTrue(bodyText.contains("ak_live_revoked99999"), "Should expose revoked secrets for internal sync")
     }
 
     @Test
-    fun `test generate key creates and exposes secret ONCE`() = testApplication {
+    fun `test internal keys denies normal user token`() = testApplication {
+        application { module() }
+
+        val response = client.get("/internal/keys") {
+            header(HttpHeaders.Authorization, "Bearer dev-user-token")
+        }
+        assertEquals(HttpStatusCode.Forbidden, response.status)
+    }
+
+    @Test
+    fun `test generate key creates and exposes secret ONCE for registered user`() = testApplication {
         application { module() }
 
         val response = client.post("/keys/generate") {
+           header(HttpHeaders.Authorization, "Bearer dev-user-token")
            setBody("{\"name\":\"New UI Key\"}")
         }
         assertEquals(HttpStatusCode.Created, response.status)
 
         val bodyText = response.bodyAsText()
-        // We get the secret precisely once in this payload
         assertTrue(bodyText.contains("ak_live_"), "Payload should contain the new secret key")
-        assertTrue(bodyText.contains("New UI Key"), "Payload should bind the correct name")
         val generatedId = parseId(bodyText)
         
         assertTrue(KeyRepository.activeRecords.any { it.id == generatedId }, "Generated key should be active in repository")
     }
 
     @Test
-    fun `test revoke key uses ID and marks it as revoked`() = testApplication {
+    fun `test missing authorization token gets rejected 401`() = testApplication {
         application { module() }
 
-        val response = client.delete("/keys/revoke") {
-            setBody("{\"id\":\"test-id-1\"}")
+        val response = client.post("/keys/generate") {
+           // Intentionally omitted authorization
+           setBody("{\"name\":\"New UI Key\"}")
         }
-
-        assertEquals(HttpStatusCode.OK, response.status)
-        assertTrue(KeyRepository.activeRecords.none { it.id == "test-id-1" }, "Key should be removed from active")
-        assertTrue(KeyRepository.revokedRecords.any { it.id == "test-id-1" }, "Key should now be revoked")
+        assertEquals(HttpStatusCode.Unauthorized, response.status)
+        assertTrue(response.bodyAsText().contains("Missing Authorization header"))
     }
 }

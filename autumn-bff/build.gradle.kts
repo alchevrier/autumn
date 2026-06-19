@@ -16,5 +16,11 @@ kotlin {
                 implementation("org.slf4j:slf4j-simple:2.0.12")
             }
         }
+        val jvmTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation("io.ktor:ktor-server-test-host:2.3.11")
+            }
+        }
     }
 }

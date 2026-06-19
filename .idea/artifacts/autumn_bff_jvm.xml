@@ -1,0 +1,6 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="autumn-bff-jvm">
+    <output-path>$PROJECT_DIR$/autumn-bff/build/libs</output-path>
+    <root id="archive" name="autumn-bff-jvm.jar" />
+  </artifact>
+</component>

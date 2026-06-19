@@ -102,3 +102,46 @@ Architectural decisions live in [`docs/adr/`](docs/adr) and capture the initial 
 - ADR-0015 — Configuration-Derived Allocation Budget and Compiler Enforcement
 - ADR-0016 — Interaction and Entity Schema Contract
 - ADR-0017 — Circuit-Based Data Pipeline and Interrupt Moderation
+
+## Integration example (Jetpack Compose)
+
+Autumn bypasses standard object allocation by replacing DTO flows with an emulated hardware interrupt wire. Here is how you bind Autumn to a Compose UI:
+
+```kotlin
+// 1. The Circuit Binder
+// This adapts Autumn's memory matrices to platform-specific graphics.
+class MyScreenBinder(
+    stateEngine: EpochStateEngine,
+    stringRegistry: StringRegistry
+) : AutumnCircuitBinder(stateEngine, stringRegistry) {
+    // Expose specific coordinates statically configured by @InjectBudget
+    fun getHeroTitle() = resolveTextPrimitive(coordinateId = 0)
+    fun getActionLabel() = resolveTextPrimitive(coordinateId = 1)
+}
+
+// 2. The Native UI
+@Composable
+fun AutumnScreen(binder: MyScreenBinder) {
+    // A single state trigger. When the global hardware wire pulses, 
+    // this increments, causing Compose to redraw the screen.
+    var epochTick by remember { mutableStateOf(0) }
+    
+    LaunchedEffect(binder) {
+        // Suspend the UI completely until the batch finishes
+        binder.attachToInterruptWire(this) {
+            epochTick++ // Emulates an interrupt wakeup
+        }
+    }
+
+    // Rely on the tick to trigger recomposition, 
+    // then read strictly from the hardware-sympathetic registry
+    Column {
+        Text(text = binder.getHeroTitle())
+        Button(onClick = { /* Fire NetworkHandoff in-place */ }) {
+            Text(text = binder.getActionLabel())
+        }
+    }
+}
+```
+
+Because Autumn handles the payloads purely natively as bytes, making the network request does not fill the garbage collector. The OS socket bytes sit in `StringRegistry`, the `EpochStateEngine` evaluates the exact slot mutations, and Compose only executes a String allocation inside `resolveTextPrimitive` when drawing the physical pixel!

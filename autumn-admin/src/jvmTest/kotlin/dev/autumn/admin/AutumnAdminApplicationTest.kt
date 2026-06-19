@@ -19,10 +19,12 @@ class AutumnAdminApplicationTest {
 
     @BeforeTest
     fun setup() {
-        KeyRepository.activeKeys.clear()
-        KeyRepository.activeKeys.add("ak_live_x892njkasd891")
-        KeyRepository.revokedKeys.clear()
-        KeyRepository.revokedKeys.add("ak_live_revoked99999")
+        KeyRepository.resetForTest()
+        KeyRepository.provide("ak_live_x892njkasd891")
+        
+        // Push something to revoked state for baseline evaluations
+        KeyRepository.provide("ak_live_revoked99999")
+        KeyRepository.revoke("ak_live_revoked99999")
     }
 
     @Test
@@ -35,6 +37,20 @@ class AutumnAdminApplicationTest {
         val bodyText = response.bodyAsText()
         assertTrue(bodyText.contains("ak_live_x892njkasd891"), "Should contain active key")
         assertTrue(bodyText.contains("ak_live_revoked99999"), "Should contain revoked key")
+    }
+
+    @Test
+    fun `test generate key creates and stores a new active key`() = testApplication {
+        application { module() }
+
+        val response = client.post("/keys/generate")
+        assertEquals(HttpStatusCode.Created, response.status)
+
+        val bodyText = response.bodyAsText()
+        assertTrue(bodyText.contains("ak_live_"), "Payload should contain the new key structure")
+        val generatedKey = parseKey(bodyText)
+        
+        assertTrue(KeyRepository.activeKeys.contains(generatedKey), "Generated key should be active in repository")
     }
 
     @Test

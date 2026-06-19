@@ -11,20 +11,56 @@ import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
+import java.util.UUID
+
+interface KeyRepositoryStrategy {
+    val activeKeys: Set<String>
+    val revokedKeys: Set<String>
+    fun provide(key: String)
+    fun revoke(key: String)
+    fun generate(): String
+    fun resetForTest()
+}
+
+class InMemoryKeyRepositoryStrategy : KeyRepositoryStrategy {
+    private val _activeKeys = mutableSetOf("ak_live_x892njkasd891", "ak_test_j123n12o3n123")
+    private val _revokedKeys = mutableSetOf("ak_live_revoked99999")
+
+    override val activeKeys: Set<String> get() = _activeKeys
+    override val revokedKeys: Set<String> get() = _revokedKeys
+
+    override fun provide(key: String) {
+        _revokedKeys.remove(key)
+        _activeKeys.add(key)
+    }
+
+    override fun revoke(key: String) {
+        _activeKeys.remove(key)
+        _revokedKeys.add(key)
+    }
+
+    override fun generate(): String {
+        val newKey = "ak_live_" + UUID.randomUUID().toString().replace("-", "")
+        _activeKeys.add(newKey)
+        return newKey
+    }
+
+    override fun resetForTest() {
+        _activeKeys.clear()
+        _revokedKeys.clear()
+    }
+}
 
 object KeyRepository {
-    val activeKeys = mutableSetOf("ak_live_x892njkasd891", "ak_test_j123n12o3n123")
-    val revokedKeys = mutableSetOf("ak_live_revoked99999")
+    var strategy: KeyRepositoryStrategy = InMemoryKeyRepositoryStrategy()
 
-    fun provide(key: String) {
-        revokedKeys.remove(key)
-        activeKeys.add(key)
-    }
+    val activeKeys: Set<String> get() = strategy.activeKeys
+    val revokedKeys: Set<String> get() = strategy.revokedKeys
 
-    fun revoke(key: String) {
-        activeKeys.remove(key)
-        revokedKeys.add(key)
-    }
+    fun provide(key: String) = strategy.provide(key)
+    fun revoke(key: String) = strategy.revoke(key)
+    fun generate() = strategy.generate()
+    fun resetForTest() = strategy.resetForTest()
 }
 
 fun main() {
@@ -44,6 +80,11 @@ fun Application.module() {
             val revokedArray = KeyRepository.revokedKeys.joinToString("\",\"", "[\"", "\"]")
             val json = "{\"activeKeys\":$activeArray, \"revokedKeys\":$revokedArray}"
             call.respondText(json, io.ktor.http.ContentType.Application.Json)
+        }
+
+        post("/keys/generate") {
+            val newKey = KeyRepository.generate()
+            call.respondText("{\"key\":\"$newKey\"}", io.ktor.http.ContentType.Application.Json, HttpStatusCode.Created)
         }
 
         post("/keys/provide") {

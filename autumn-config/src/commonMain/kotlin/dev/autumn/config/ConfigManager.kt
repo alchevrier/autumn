@@ -7,9 +7,14 @@ import dev.autumn.buckets.SbeDecoder
 // Following ADR-0002 Resource definition:
 // type, path, action are modeled as indices/pointers rather than full strings on the hotpath.
 class ResourceDecoder : SbeDecoder() {
-    private val OFFSET_TYPE_ID = 0
-    private val OFFSET_PATH_REF = 4
-    private val OFFSET_ACTION_ID = 8
+    private val OFFSET_RESOURCE_ID = 0
+    private val OFFSET_TYPE_ID = 4
+    private val OFFSET_PATH_REF = 8
+    private val OFFSET_ACTION_ID = 12
+
+    var resourceId: Int
+        get() = readInt(OFFSET_RESOURCE_ID)
+        set(value) = writeInt(OFFSET_RESOURCE_ID, value)
 
     var typeId: Int
         get() = readInt(OFFSET_TYPE_ID)
@@ -24,12 +29,16 @@ class ResourceDecoder : SbeDecoder() {
         set(value) = writeInt(OFFSET_ACTION_ID, value)
 }
 
-@LongLived
 class ResourceBucketPool(capacity: Int) : ByteArrayBucketPool<ResourceDecoder>(
     capacity = capacity,
-    recordSizeInBytes = 12,
-    flyweight = ResourceDecoder()
-)
+    recordSizeInBytes = 16,
+    flyweight = flyweightDecoder
+) {
+    companion object {
+        @LongLived
+        private val flyweightDecoder = ResourceDecoder()
+    }
+}
 
 class ConfigManager(
     val maxResources: Int
@@ -49,8 +58,9 @@ class ConfigManager(
      * "Parses" config values into the fixed bucket structure.
      * In a real implementation this would unmarshal binary chunked JSON directly into the pool.
      */
-    fun defineResource(typeId: Int, pathRefId: Int, actionId: Int) {
+    fun defineResource(resourceId: Int, typeId: Int, pathRefId: Int, actionId: Int) {
         resources.append().apply {
+            this.resourceId = resourceId
             this.typeId = typeId
             this.pathRefId = pathRefId
             this.actionId = actionId

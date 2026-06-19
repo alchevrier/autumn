@@ -12,8 +12,8 @@ class ConfigManagerTest {
         val config = ConfigManager(maxResources = 100)
 
         // Simulate JSON parsing feeding integer mappings into the pool
-        config.defineResource(typeId = 1, pathRefId = 500, actionId = 99)
-        config.defineResource(typeId = 1, pathRefId = 501, actionId = 100)
+        config.defineResource(resourceId = 1, typeId = 1, pathRefId = 500, actionId = 99)
+        config.defineResource(resourceId = 1, typeId = 1, pathRefId = 501, actionId = 100)
 
         assertEquals(2, config.resources.size)
 

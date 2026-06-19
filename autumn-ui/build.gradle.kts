@@ -9,7 +9,12 @@ kotlin {
         commonMain.dependencies {
             implementation(project(":autumn-core"))
             implementation(project(":autumn-state"))
+            implementation(project(":autumn-config"))
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
         }
-        commonTest.dependencies {}
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.1")
+        }
     }
 }

@@ -31,11 +31,11 @@ class ResourceBucketPool(capacity: Int) : ByteArrayBucketPool<ResourceDecoder>(
     flyweight = ResourceDecoder()
 )
 
-@LongLived
 class ConfigManager(
     val maxResources: Int
 ) {
     // Zero-allocation resource storage
+    @LongLived
     val resources = ResourceBucketPool(maxResources)
     
     // Instead of holding strings in the heap, we would theoretically have a String -> Int id registry

@@ -30,12 +30,14 @@ The key security rule is simple: state must only reference bucket content the us
 
 ## Module overview
 
-- `autumn-core` — core interfaces and shared domain models.
-- `autumn-state` — state documents and state orchestration.
-- `autumn-buckets` — bucket abstractions and bucket reference handling.
-- `autumn-resolver` — country resolution interfaces and resolver composition.
-- `autumn-config` — bundled and remote configuration management.
-- `autumn-ui` — platform UI bridge built around expect/actual entry points.
+- `autumn-core` — core interfaces, shared domain models, and compiler pacts (`@LongLived`, `@InjectBudget`).
+- `autumn-compiler-plugin` — K2 compiler plugin enforcing strictly bounded allocations at build time.
+- `autumn-gradle-plugin` — Gradle hook required to execute the compiler plugin across platforms.
+- `autumn-state` — hardware-sympathetic reactivity engine (`EpochStateEngine`) replacing traditional Flow observers.
+- `autumn-buckets` — bucket abstractions mapping configuration pointers to raw image/document strings.
+- `autumn-resolver` — deterministic network boundary (`AutumnNetworkEngine`) executing in-place handoffs.
+- `autumn-config` — zero-allocation payload string registry and hardware matrix limit calculator (`JsonConfigParser`).
+- `autumn-ui` — native rendering bridge linking platform Canvas text exactly to byte indices (`AutumnCircuitBinder`, `AutumnMotherboard`).
 
 ## Architecture
 
@@ -69,12 +71,14 @@ The key security rule is simple: state must only reference bucket content the us
 
 ```text
 docs/adr/
-autumn-core/
-autumn-state/
-autumn-buckets/
-autumn-resolver/
-autumn-config/
-autumn-ui/
+autumn-core/               # Compiler pacts and limits
+autumn-compiler-plugin/    # K2 AST visitor enforcing allocations
+autumn-gradle-plugin/      # Gradle hooks for plugin injection
+autumn-resolver/           # In-place Network Handoff API
+autumn-config/             # Zero-alloc JSON parsing and registries
+autumn-buckets/            # Content offset mappers
+autumn-state/              # Circuit-based Epoch observer
+autumn-ui/                 # SoC Motherboard and Native UI Compose Binder
 ```
 
 ## Getting started

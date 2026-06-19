@@ -10,7 +10,11 @@ import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
+import org.jetbrains.kotlin.ir.visitors.acceptVoid
 import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.ir.types.isString
+import org.jetbrains.kotlin.ir.types.isPrimitiveType
+import org.jetbrains.kotlin.ir.types.classFqName
 
 class AllocationVisitor(
     private val pluginContext: IrPluginContext,
@@ -53,14 +57,24 @@ class AllocationVisitor(
         }
 
         if (!isAllowed) {
-            // Note: In real life we'd filter out basic arrays/strings/primitive wrappers if needed.
-            // We'd also check if the type being instantiated is not a primitive.
             val type = expression.type
-            messageCollector.report(
-                CompilerMessageSeverity.WARNING,
-                "Heap allocation detected in strict zero-allocation scope: ${type}. Annotate with @LongLived if this is a safe long-lived allocation."
-                // Location reporting requires `MessageUtil` and Source offsets. 
-            )
+            
+            // Allow basic types (String, primitives) and Exceptions as they are typically 
+            // optimized away or required on slow paths (e.g. throwing error).
+            // Note: We deliberately DO NOT allow kotlin.collections here to enforce custom pool usage.
+            val fqName = type.classFqName?.asString() ?: ""
+            val isSafeType = type.isPrimitiveType() || 
+                             type.isString() ||
+                             fqName.endsWith("Exception") || 
+                             fqName.endsWith("Error") ||
+                             fqName.startsWith("java.lang.")
+
+            if (!isSafeType) {
+                messageCollector.report(
+                    CompilerMessageSeverity.WARNING,
+                    "Heap allocation detected in strict zero-allocation scope: ${fqName}. Annotate with @LongLived if this is a safe long-lived allocation."
+                )
+            }
         }
     }
 }

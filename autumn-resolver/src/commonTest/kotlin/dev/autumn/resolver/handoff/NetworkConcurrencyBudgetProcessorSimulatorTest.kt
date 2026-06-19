@@ -1,9 +1,11 @@
 package dev.autumn.resolver.handoff
 
 import dev.autumn.annotations.NetworkConcurrencyBudget
+import dev.autumn.annotations.LongLived
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+@LongLived
 class NetworkConcurrencyBudgetProcessorSimulatorTest {
 
     // Simulates the K2 compiler plugin scanning the AST and evaluating the constant literal

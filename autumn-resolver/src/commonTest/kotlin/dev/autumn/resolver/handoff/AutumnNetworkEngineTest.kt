@@ -5,6 +5,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+import dev.autumn.annotations.LongLived
+
+@LongLived
 class AutumnNetworkEngineTest {
 
     // Concrete mock for testing the boundary
@@ -97,5 +100,41 @@ class AutumnNetworkEngineTest {
         
         assertTrue(result.isFailure, "Result should reflect the socket timeout")
         assertEquals(0, slotManager.activeInFlightCount(), "Slot must be freed even on network failure")
+    }
+
+    @Test
+    fun `engine instantly circuit breaks when queuing too many requests`() = runTest {
+        // Strict budget of exactly 2 concurrent network requests
+        val slotManager = NetworkSlotManager(2)
+        val networkClient = MockRawNetworkClient()
+        
+        val engine = AutumnNetworkEngine(
+            slotManager = slotManager,
+            networkClient = networkClient,
+            payloadMatrixWriter = {}
+        )
+
+        // 1. Thread 1 claims the first slot
+        val slot1 = engine.claimSlot()
+        assertEquals(0, slot1)
+
+        // 2. Thread 2 claims the second slot
+        val slot2 = engine.claimSlot()
+        assertEquals(1, slot2)
+
+        // 3. Thread 3 attempts to claim a slot but the budget is exhausted!
+        // No waiting, no queueing array, no blocking — just instant failure.
+        val slot3 = engine.claimSlot()
+        assertEquals(-1, slot3, "Must instantly circuit break when budget is exhausted")
+
+        // 4. Verify telemetry still strictly reports 2
+        assertEquals(2, slotManager.activeInFlightCount())
+
+        // 5. When Thread 1 finishes, its slot becomes available again
+        engine.releaseSlot(slot1)
+        
+        // 6. Thread 4 tries again and succeeds, reusing slot 0
+        val slot4 = engine.claimSlot()
+        assertEquals(0, slot4, "Freed slot must be immediately reusable")
     }
 }

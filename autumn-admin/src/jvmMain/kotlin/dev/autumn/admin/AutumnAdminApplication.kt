@@ -13,53 +13,68 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import java.util.UUID
 
+data class ApiKeyRecord(val id: String, val name: String, val secret: String)
+
 interface KeyRepositoryStrategy {
-    val activeKeys: Set<String>
-    val revokedKeys: Set<String>
-    fun provide(key: String)
-    fun revoke(key: String)
-    fun generate(): String
+    val activeRecords: List<ApiKeyRecord>
+    val revokedRecords: List<ApiKeyRecord>
+    fun provide(id: String, name: String, secret: String): ApiKeyRecord
+    fun revokeById(id: String)
+    fun generate(name: String): ApiKeyRecord
     fun resetForTest()
 }
 
 class InMemoryKeyRepositoryStrategy : KeyRepositoryStrategy {
-    private val _activeKeys = mutableSetOf("ak_live_x892njkasd891", "ak_test_j123n12o3n123")
-    private val _revokedKeys = mutableSetOf("ak_live_revoked99999")
+    private val records = mutableMapOf<String, ApiKeyRecord>()
+    private val revokedIds = mutableSetOf<String>()
 
-    override val activeKeys: Set<String> get() = _activeKeys
-    override val revokedKeys: Set<String> get() = _revokedKeys
-
-    override fun provide(key: String) {
-        _revokedKeys.remove(key)
-        _activeKeys.add(key)
+    init {
+        provide("id-1", "Default Live Key", "ak_live_x892njkasd891")
+        provide("id-2", "Default Test Key", "ak_test_j123n12o3n123")
+        val revoked = provide("id-revoked", "Old Revoked Key", "ak_live_revoked99999")
+        revokeById(revoked.id)
     }
 
-    override fun revoke(key: String) {
-        _activeKeys.remove(key)
-        _revokedKeys.add(key)
+    override val activeRecords: List<ApiKeyRecord>
+        get() = records.values.filter { it.id !in revokedIds }
+
+    override val revokedRecords: List<ApiKeyRecord>
+        get() = records.values.filter { it.id in revokedIds }
+
+    override fun provide(id: String, name: String, secret: String): ApiKeyRecord {
+        val record = ApiKeyRecord(id, name, secret)
+        records[id] = record
+        revokedIds.remove(id)
+        return record
     }
 
-    override fun generate(): String {
-        val newKey = "ak_live_" + UUID.randomUUID().toString().replace("-", "")
-        _activeKeys.add(newKey)
-        return newKey
+    override fun revokeById(id: String) {
+        if (records.containsKey(id)) {
+            revokedIds.add(id)
+        }
+    }
+
+    override fun generate(name: String): ApiKeyRecord {
+        val id = UUID.randomUUID().toString()
+        val secret = "ak_live_" + id.replace("-", "")
+        return provide(id, name, secret)
     }
 
     override fun resetForTest() {
-        _activeKeys.clear()
-        _revokedKeys.clear()
+        records.clear()
+        revokedIds.clear()
     }
 }
 
 object KeyRepository {
     var strategy: KeyRepositoryStrategy = InMemoryKeyRepositoryStrategy()
 
-    val activeKeys: Set<String> get() = strategy.activeKeys
-    val revokedKeys: Set<String> get() = strategy.revokedKeys
+    val activeRecords get() = strategy.activeRecords
+    val revokedRecords get() = strategy.revokedRecords
 
-    fun provide(key: String) = strategy.provide(key)
-    fun revoke(key: String) = strategy.revoke(key)
-    fun generate() = strategy.generate()
+    fun provide(id: String, name: String, secret: String) = strategy.provide(id, name, secret)
+    fun revokeById(id: String) = strategy.revokeById(id)
+    fun generate(name: String) = strategy.generate(name)
     fun resetForTest() = strategy.resetForTest()
 }
 
@@ -68,37 +83,56 @@ fun main() {
         .start(wait = true)
 }
 
-// Minimal manual parser for the test
-fun parseKey(json: String): String {
-    return json.substringAfter("\"key\":\"").substringBefore("\"")
-}
+// parsing helpers for testing manual JSON without heavy Kotlinx maps
+fun parseId(json: String): String = json.substringAfter("\"id\":\"").substringBefore("\"")
+fun parseName(json: String): String = json.substringAfter("\"name\":\"").substringBefore("\"")
+fun parseSecret(json: String): String = json.substringAfter("\"secret\":\"").substringBefore("\"")
 
 fun Application.module() {
     routing {
+        // UI Facing Endpoint: NEVER emits the raw secrets, only safe metadata
         get("/keys") {
-            val activeArray = KeyRepository.activeKeys.joinToString("\",\"", "[\"", "\"]")
-            val revokedArray = KeyRepository.revokedKeys.joinToString("\",\"", "[\"", "\"]")
-            val json = "{\"activeKeys\":$activeArray, \"revokedKeys\":$revokedArray}"
+            val activeList = KeyRepository.activeRecords.joinToString(",") { "{\"id\":\"${it.id}\", \"name\":\"${it.name}\"}" }
+            val revokedList = KeyRepository.revokedRecords.joinToString(",") { "{\"id\":\"${it.id}\", \"name\":\"${it.name}\"}" }
+            val json = "{\"activeKeys\":[$activeList], \"revokedKeys\":[$revokedList]}"
+            call.respondText(json, io.ktor.http.ContentType.Application.Json)
+        }
+
+        // Internal BFF Facing Endpoint: Emits full arrays of active string targets
+        get("/internal/keys") {
+            val activeList = KeyRepository.activeRecords.joinToString("\",\"", "[\"", "\"]") { it.secret }
+            val revokedList = KeyRepository.revokedRecords.joinToString("\",\"", "[\"", "\"]") { it.secret }
+            // If empty, joinToString won't quite match standard brackets perfectly without conditional bounds, 
+            // but for simplicity it ensures format matches the BFF expectations directly.
+            val aFormat = if (KeyRepository.activeRecords.isEmpty()) "[]" else activeList
+            val rFormat = if (KeyRepository.revokedRecords.isEmpty()) "[]" else revokedList
+            val json = "{\"activeKeys\":$aFormat, \"revokedKeys\":$rFormat}"
             call.respondText(json, io.ktor.http.ContentType.Application.Json)
         }
 
         post("/keys/generate") {
-            val newKey = KeyRepository.generate()
-            call.respondText("{\"key\":\"$newKey\"}", io.ktor.http.ContentType.Application.Json, HttpStatusCode.Created)
+            val reqText = call.receiveText()
+            val name = parseName(reqText)
+            val record = KeyRepository.generate(name)
+            // Emits the SECRET literally exactly ONCE.
+            val json = "{\"id\":\"${record.id}\", \"name\":\"${record.name}\", \"secret\":\"${record.secret}\"}"
+            call.respondText(json, io.ktor.http.ContentType.Application.Json, HttpStatusCode.Created)
         }
 
         post("/keys/provide") {
             val reqText = call.receiveText()
-            val key = parseKey(reqText)
-            KeyRepository.provide(key)
-            call.respondText("{\"key\":\"$key\"}", io.ktor.http.ContentType.Application.Json, HttpStatusCode.Created)
+            val id = parseId(reqText)
+            val name = parseName(reqText)
+            val secret = parseSecret(reqText)
+            KeyRepository.provide(id, name, secret)
+            call.respondText("{\"id\":\"$id\"}", io.ktor.http.ContentType.Application.Json, HttpStatusCode.Created)
         }
 
         delete("/keys/revoke") {
             val reqText = call.receiveText()
-            val key = parseKey(reqText)
-            KeyRepository.revoke(key)
-            call.respondText("{\"key\":\"$key\"}", io.ktor.http.ContentType.Application.Json, HttpStatusCode.OK)
+            val id = parseId(reqText)
+            KeyRepository.revokeById(id)
+            call.respondText("{\"id\":\"$id\"}", io.ktor.http.ContentType.Application.Json, HttpStatusCode.OK)
         }
     }
 }

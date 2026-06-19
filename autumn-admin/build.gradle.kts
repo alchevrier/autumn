@@ -20,6 +20,8 @@ kotlin {
             dependencies {
                 implementation(kotlin("test"))
                 implementation("io.ktor:ktor-server-test-host:2.3.11")
+                implementation("io.ktor:ktor-client-content-negotiation:2.3.11")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
             }
         }
     }

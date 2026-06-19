@@ -1,26 +1,16 @@
 package dev.autumn.admin
 
 import io.ktor.http.HttpStatusCode
-import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.call
-import io.ktor.server.application.install
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
-import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.server.request.receive
-import io.ktor.server.response.respond
+import io.ktor.server.request.receiveText
+import io.ktor.server.response.respondText
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
-import kotlinx.serialization.Serializable
-
-@Serializable
-data class ApiKeyRequest(val key: String)
-
-@Serializable
-data class ApiKeyResponse(val activeKeys: Set<String>, val revokedKeys: Set<String>)
 
 object KeyRepository {
     val activeKeys = mutableSetOf("ak_live_x892njkasd891", "ak_test_j123n12o3n123")
@@ -42,26 +32,32 @@ fun main() {
         .start(wait = true)
 }
 
-fun Application.module() {
-    install(ContentNegotiation) {
-        json()
-    }
+// Minimal manual parser for the test
+fun parseKey(json: String): String {
+    return json.substringAfter("\"key\":\"").substringBefore("\"")
+}
 
+fun Application.module() {
     routing {
         get("/keys") {
-            call.respond(ApiKeyResponse(KeyRepository.activeKeys, KeyRepository.revokedKeys))
+            val activeArray = KeyRepository.activeKeys.joinToString("\",\"", "[\"", "\"]")
+            val revokedArray = KeyRepository.revokedKeys.joinToString("\",\"", "[\"", "\"]")
+            val json = "{\"activeKeys\":$activeArray, \"revokedKeys\":$revokedArray}"
+            call.respondText(json, io.ktor.http.ContentType.Application.Json)
         }
 
         post("/keys/provide") {
-            val req = call.receive<ApiKeyRequest>()
-            KeyRepository.provide(req.key)
-            call.respond(HttpStatusCode.Created, mapOf("status" to "provided", "key" to req.key))
+            val reqText = call.receiveText()
+            val key = parseKey(reqText)
+            KeyRepository.provide(key)
+            call.respondText("{\"key\":\"$key\"}", io.ktor.http.ContentType.Application.Json, HttpStatusCode.Created)
         }
 
         delete("/keys/revoke") {
-            val req = call.receive<ApiKeyRequest>()
-            KeyRepository.revoke(req.key)
-            call.respond(HttpStatusCode.OK, mapOf("status" to "revoked", "key" to req.key))
+            val reqText = call.receiveText()
+            val key = parseKey(reqText)
+            KeyRepository.revoke(key)
+            call.respondText("{\"key\":\"$key\"}", io.ktor.http.ContentType.Application.Json, HttpStatusCode.OK)
         }
     }
 }

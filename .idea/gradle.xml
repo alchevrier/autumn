@@ -13,6 +13,7 @@
             <option value="$PROJECT_DIR$/autumn-core" />
             <option value="$PROJECT_DIR$/autumn-gradle-plugin" />
             <option value="$PROJECT_DIR$/autumn-resolver" />
+            <option value="$PROJECT_DIR$/autumn-sandbox" />
             <option value="$PROJECT_DIR$/autumn-state" />
             <option value="$PROJECT_DIR$/autumn-ui" />
           </set>

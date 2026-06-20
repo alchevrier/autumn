@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="autumn-state-jvm-1.0.0-SNAPSHOT">
+    <output-path>$PROJECT_DIR$/autumn-state/build/libs</output-path>
+    <root id="archive" name="autumn-state-jvm-1.0.0-SNAPSHOT.jar">
+      <element id="module-output" name="autumn.autumn-state.jvmMain" />
+    </root>
+  </artifact>
+</component>

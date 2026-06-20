@@ -1,4 +1,5 @@
 pluginManagement {
+    includeBuild("autumn-gradle-plugin")
     repositories {
         mavenLocal()
         gradlePluginPortal()
@@ -17,6 +18,5 @@ include(
     "autumn-config",
     "autumn-ui",
     "autumn-compiler-plugin",
-    "autumn-gradle-plugin",
     "autumn-sandbox"
 )

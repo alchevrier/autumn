@@ -10,7 +10,7 @@ import dev.autumn.annotations.NetworkConcurrencyBudget
  */
 class NetworkSlotManager(
     // In a real build, the compiler plugin injects this literal based on the annotation.
-    @NetworkConcurrencyBudget(maxInFlightRequests = 10)
+    @NetworkConcurrencyBudget(maxInFlightRequests = 2)
     private val budget: Int
 ) {
     // 0 = FREE, 1 = CLAIMED

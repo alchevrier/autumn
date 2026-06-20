@@ -1,11 +1,17 @@
 plugins {
-    kotlin("jvm")
+    kotlin("jvm") version "2.1.21"
     `java-gradle-plugin`
     `maven-publish`
 }
 
 group = "dev.autumn"
 version = "1.0.2"
+
+repositories {
+    mavenCentral()
+    google()
+    gradlePluginPortal()
+}
 
 tasks.withType<JavaCompile> {
     sourceCompatibility = "23"

@@ -27,7 +27,7 @@ jobs:
       run: ./gradlew :autumn-compiler-plugin:publishToMavenLocal
 
     - name: Build and Test
-      run: ./gradlew build koverXmlReport
+      run: ./gradlew koverXmlReport build
 
     # (Optional) You can setup codecov or coveralls action here to process the Kover XML report
     # - name: Upload coverage reports to Codecov

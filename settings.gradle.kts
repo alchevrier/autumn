@@ -6,9 +6,17 @@ pluginManagement {
     includeBuild("autumn-gradle-plugin")
     repositories {
         mavenLocal()
+        mavenCentral()
         gradlePluginPortal()
         google()
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        mavenLocal()
         mavenCentral()
+        google()
     }
 }
 

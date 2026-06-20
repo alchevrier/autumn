@@ -4,9 +4,9 @@ import dev.autumn.annotations.LongLived
 
 class AppState
 
-@LongLived
 class ApplicationBootstrap {
     // ✅ ALLOWED: Configured inside an explicit @LongLived initialization scope
+    @LongLived
     val state = AppState()
 }
 

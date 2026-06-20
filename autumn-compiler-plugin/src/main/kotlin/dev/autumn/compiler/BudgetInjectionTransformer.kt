@@ -13,7 +13,7 @@ import org.jetbrains.kotlin.ir.util.getAnnotation
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.name.FqName
-import org.jetbrains.kotlin.ir.declarations.path
+import org.jetbrains.kotlin.ir.util.file
 import java.io.File
 
 /**
@@ -68,7 +68,7 @@ class BudgetInjectionTransformer(
                     
                     // Simple simulated JSON schema compiler parsing (in real K2 we map via kotlinx.serialization)
                     try {
-                        val file = File(declaration.file.path).parentFile.resolve(schemaFileName)
+                        val file = File(declaration.file.fileEntry.name).parentFile.resolve(schemaFileName)
                         if (file.exists()) {
                             val content = file.readText()
                             if (content.contains("staticComponents") && content.contains("itemsPerPage")) {

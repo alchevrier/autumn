@@ -15,7 +15,6 @@ import dev.autumn.state.EpochStateEngine
  * Instead of a reflection-heavy dynamic IoC container like Dagger or Koin,
  * this explicitly wires the exact pre-allocated boundaries once at boot.
  */
-@LongLived
 class AutumnMotherboard(
     networkClient: RawNetworkClient,
     stringRegistryBudget: Int = 1000,
@@ -24,23 +23,31 @@ class AutumnMotherboard(
     configBucketsBudget: Int = 100
 ) {
     // 1. Memory / L1 Cache
+    @LongLived
     val stringRegistry = StringRegistry(stringRegistryBudget)
+    
+    @LongLived
     val configManager = ConfigManager(configBucketsBudget) // Hardware buckets configuration
 
     // 2. State Engine (Interrupt Moderation)
+    @LongLived
     val stateEngine = EpochStateEngine(epochMatrixBudget)
 
     // 3. Network Boundaries
+    @LongLived
     val slotManager = NetworkSlotManager(concurrencyBudget)
     
+    @LongLived
+    val jsonParser = JsonConfigParser()
+    
+    @LongLived
     val networkEngine = AutumnNetworkEngine(
         slotManager = slotManager,
         networkClient = networkClient,
         payloadMatrixWriter = { bytes ->
             // Zero-allocation pipeline execution:
             // Parse -> Registry -> Config -> Epoch Bump
-            val parser = JsonConfigParser()
-            parser.parse(bytes, configManager, stringRegistry)
+            jsonParser.parse(bytes, configManager, stringRegistry)
             
             // In a complete loop, the parser would identify which slot was populated.
             // For now, we simulate bumping index 0 to wake the UI wire.

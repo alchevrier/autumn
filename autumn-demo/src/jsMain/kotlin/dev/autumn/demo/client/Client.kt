@@ -12,7 +12,6 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.await
 import kotlinx.coroutines.launch
 
-@LongLived
 class JsFetchNetworkClient : RawNetworkClient {
     override suspend fun executeRaw(endpoint: String, method: String, requestBody: ByteArray?): Result<ByteArray> {
         return try {

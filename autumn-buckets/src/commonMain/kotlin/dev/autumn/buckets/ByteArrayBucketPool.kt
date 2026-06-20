@@ -6,7 +6,6 @@ import dev.autumn.annotations.LongLived
  * Base implementation of an Array-of-Structs (AoS) backed by a flat [ByteArray],
  * mapped to a strictly evaluated Simple Binary Encoding (SBE) flyweight.
  */
-@LongLived
 abstract class ByteArrayBucketPool<T : SbeDecoder>(
     override val capacity: Int,
     protected val recordSizeInBytes: Int,

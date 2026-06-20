@@ -57,12 +57,16 @@ jobs:
     - name: Publish Compiler Plugin to Maven Local
       run: ./gradlew :autumn-compiler-plugin:publishToMavenLocal
 
-    - name: Publish to Sonatype Maven Central
+    - name: Prepare Cryptographic Key
       run: |
-        echo "${{ secrets.SIGNING_KEY_BASE64 }}" | base64 -d > secring.gpg
-        export ORG_GRADLE_PROJECT_signingInMemoryKey="$(cat secring.gpg)"
-        
-        ./gradlew publishAndReleaseToMavenCentral
+        EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+        echo "ORG_GRADLE_PROJECT_signingInMemoryKey<<$EOF" >> "$GITHUB_ENV"
+        echo "${{ secrets.SIGNING_KEY_BASE64 }}" | base64 -d >> "$GITHUB_ENV"
+        echo "" >> "$GITHUB_ENV"
+        echo "$EOF" >> "$GITHUB_ENV"
+
+    - name: Publish to Sonatype Maven Central
+      run: ./gradlew publishAndReleaseToMavenCentral
       env:
         ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
         ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}

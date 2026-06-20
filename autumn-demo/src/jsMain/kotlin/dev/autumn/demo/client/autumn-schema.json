@@ -1,4 +1,6 @@
 {
+  "version": "1.0.0",
+  "schemaDate": "2026-06-20",
   "screens": {
     "list": {
       "staticComponents": 5,

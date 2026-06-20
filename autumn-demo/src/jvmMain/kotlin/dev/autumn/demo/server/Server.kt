@@ -25,6 +25,8 @@ fun main() {
                 call.respondText(
                     """
                     {
+                        "schemaVersion": "1.0.0",
+                        "schemaDate": "2026-06-20",
                         "resources": {
                             "hero-title": {
                                 "type": "TITLE",
@@ -80,6 +82,8 @@ fun main() {
                 call.respondText(
                     """
                     {
+                        "schemaVersion": "1.0.0",
+                        "schemaDate": "2026-06-20",
                         "resources": {
                             "list-title": { "type": "TITLE", "path": "Employee Directory (Page $page of $totalPages)", "action": "none" },
                             "back-btn": { "type": "BUTTON", "path": "← Back to Home", "action": "navigate:/api/state/home" },

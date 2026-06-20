@@ -16,7 +16,7 @@ subprojects {
 
     configure<com.vanniktech.maven.publish.MavenPublishBaseExtension> {
         publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL)
-        if (project.hasProperty("signingInMemoryKey")) {
+        if (project.hasProperty("signingInMemoryKey") || project.hasProperty("signingSecretKeyFile")) {
             signAllPublications()
         }
         

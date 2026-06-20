@@ -1,70 +1,31 @@
-# ADR-0002: Bucket Source Decoupling via Configuration
+# ADR-0002: Bucket Source Decoupling via Configuration (Delegated)
 
 ## Status
 
-Proposed
+Rejected / Delegated to User Backend (See ADR-0013)
 
 ## Date
 
-2026-06-17
+2026-06-20
 
 ## Context
 
-Autumn needs to support multiple storage providers and country-specific deployment choices without forcing application code to change whenever infrastructure changes. Storage choices may also vary to satisfy regional compliance requirements such as data residency. Different asset types — such as images, videos, documents, or fonts — may be served from different storage providers optimised for that type, and those choices may again differ per country. Page documents also need to reference resources and trigger actions without knowing the physical location of either, so the same document can be rendered correctly regardless of the country or infrastructure the device is assigned to.
+Autumn initially aimed to support multiple storage providers and country-specific deployment choices without forcing application code to change whenever infrastructure changes. We envisioned the client resolving buckets per asset type and per country (AWS S3, GCS, CDN selection, etc.) at runtime dynamically inside the framework configuration cache.
+
+However, as we evolved into a pure, zero-allocation Circuit-Based skeleton, maintaining extensive runtime routing tables for Content Delivery Networks (CDNs) added unnecessary heap allocations and string processing complexity. 
 
 ## Decision
 
-Bucket sources and resources are declared in the service configuration file rather than hardcoded in documents or application code.
+We have rejected handling Cloud/CDN bucket sourcing and spatial routing inside the Autumn client framework.
 
-- Supported providers can include AWS S3, Google Cloud Storage, Azure Blob Storage, Firebase Storage, and similar services.
-- Buckets are declared per asset type and per country. For example, images, videos, and documents may each resolve to a different bucket, and each of those buckets may resolve to a different provider or region depending on the country.
-- Configuration is defined per country so bucket sources can vary by jurisdiction.
-- Resources are declared in the configuration as named entries. Each entry carries a country-aware asset URI pointing to the physical content and an action URI describing what should happen when the resource is interacted with. The URI is derived from the bucket assigned to the resource's asset type and country, so routing is automatic.
-- Page documents declare only the resource identifier and, where needed, the corresponding action identifier. They contain no physical URIs and no knowledge of asset type routing or country-specific storage.
-- At delivery time, the backend-for-frontend or the client resolves the resource identifier to the correct bucket for that asset type and country, then to the final URI and action URI from the active configuration.
-- The app and state layers work only with resource identifiers and resolved references, never with hardcoded URIs.
-- The actual bucket source and action target are resolved from configuration at runtime.
-- Configuration files and state documents use **JSON** as their wire and storage format. JSON is human-readable, universally supported across iOS, Android, and Web, and straightforward to diff, version, and delta-patch. A resource declaration in the configuration looks like:
+As formalized in **ADR-0013**, Autumn treats the backend as a commodity. Country-aware bucket resolution, CDN URL mapping, and edge location bindings are purely user-side backend concerns. 
 
-```json
-{
-  "buckets": {
-    "image": {
-      "fr": "https://cdn.example.fr/images/",
-      "de": "https://cdn.example.de/images/"
-    },
-    "video": {
-      "fr": "https://video.example.fr/",
-      "de": "https://video.example.de/"
-    }
-  },
-  "resources": {
-    "hero-banner": {
-      "type": "image",
-      "path": "banners/hero.webp",
-      "action": "screen.home"
-    }
-  }
-}
-```
-
-  A page document then references only the identifier:
-
-```json
-{
-  "assets": [
-    { "id": "hero-banner" }
-  ]
-}
-```
+- The Autumn client strictly cares only about the final deterministic flat configuration payload handed off to the `AutumnNetworkEngine`.
+- If a resource requires a specific regional URI, the user's backend (which lives outside the Autumn constraint ecosystem) must pre-resolve that URL and inject it directly into the JSON configuration matrix before serving it to the client.
+- The `JsonConfigParser` simply maps the final string bytes into the `StringRegistry` flatly, completely unaware of infrastructure topologies.
 
 ## Consequences
 
-- Storage providers and action endpoints can be swapped without changing page documents or application code.
-- Asset-type-specific storage decisions — such as using a video CDN for video and an object store for documents — are configuration concerns, invisible to page documents.
-- Country-specific infrastructure and action routing can be aligned with compliance requirements, including data residency rules that may differ by asset type.
-- Page documents stay small and stable: they describe structure and intent, not infrastructure.
-- Adding a new country, a new asset type bucket, or migrating a resource to a different provider requires only a configuration change.
-- New screens can be introduced purely through configuration and new state documents without a new app release, provided they compose resource identifiers and action identifiers the app already knows how to resolve.
-- Configuration becomes a critical dependency for resource and action resolution.
-- Runtime validation is needed to ensure resource identifiers map to a configured bucket for the correct asset type and country.
+- **Positives:** Removes massive configuration bloating on the client side. No dictionary lookups for "fr" vs "de" regional CDN edges on the UI hot path.
+- **Positives:** Aligns perfectly with our zero-allocation philosophy. The client parses exactly what it draws.
+- **Negatives:** The server/backend must do the heavy lifting of localized URL derivation before transmitting the layout configuration payload to the client.

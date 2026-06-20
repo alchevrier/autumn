@@ -92,7 +92,7 @@ Getting started guidance will be added as the project skeleton evolves. For now,
 Architectural decisions live in [`docs/adr/`](docs/adr) and capture the initial shape of Autumn:
 
 - ADR-0001 — UI → State + Buckets Pattern
-- ADR-0002 — Bucket Source Decoupling via Configuration
+- ADR-0002 — Bucket Source Decoupling (Delegated to Backend)
 - ADR-0003 — Remote Configuration Versioning
 - ADR-0004 — Interaction Conventions
 - ADR-0005 — System-on-a-Chip (SoC) Static Composition Root (Replaces Lazy IoC)

@@ -18,5 +18,6 @@ include(
     "autumn-config",
     "autumn-ui",
     "autumn-compiler-plugin",
-    "autumn-sandbox"
+    "autumn-sandbox",
+    "autumn-demo"
 )

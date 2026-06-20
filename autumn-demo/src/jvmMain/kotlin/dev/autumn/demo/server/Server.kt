@@ -27,14 +27,19 @@ fun main() {
                     {
                         "resources": {
                             "hero-title": {
-                                "type": "TEXT",
+                                "type": "TITLE",
                                 "path": "Welcome to Autumn Circuit",
                                 "action": "none"
                             },
-                            "action-label": {
+                            "description-text": {
                                 "type": "TEXT",
-                                "path": "Network Circuit Demo",
-                                "action": "click"
+                                "path": "This UI is natively bound with zero heap allocations for DTOs. The JSON payload was mapped directly to a flat Integer Matrix.",
+                                "action": "none"
+                            },
+                            "action-button": {
+                                "type": "BUTTON",
+                                "path": "Trigger Hardware Interrupt",
+                                "action": "alert"
                             }
                         }
                     }

@@ -38,8 +38,8 @@ class DemoCircuitBinder(
         val registry = motherboard.stringRegistry
 
         var html = ""
-        html += "<div style=\"font-family: monospace; padding: 20px; border: 2px solid green;\">"
-        html += "<h2 style=\"color: green;\">[Circuit Pulse Received]</h2>"
+        html += "<div style=\"font-family: sans-serif; padding: 40px; max-width: 600px; margin: 0 auto; border: 2px solid #ccc; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);\">"
+        html += "<div style=\"color: #666; font-size: 0.8em; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px;\">🔌 Hardware Wire Connected</div>"
 
         val count = config.resources.size
         for (i in 0 until count) {
@@ -49,8 +49,34 @@ class DemoCircuitBinder(
             val path = registry.getString(res.pathRefId)
             val action = registry.getString(res.actionId)
 
-            html += "<div><strong>ID:</strong> ${key}<br/><strong>Type:</strong> ${type}<br/><strong>Path:</strong> ${path}<br/><strong>Action:</strong> ${action}</div><hr/>"
+            when (type.uppercase()) {
+                "TITLE" -> {
+                    html += "<h1 style=\"color: #2c3e50; margin-bottom: 10px;\">$path</h1>"
+                }
+                "TEXT" -> {
+                    html += "<p style=\"color: #34495e; line-height: 1.6; margin-bottom: 20px;\">$path</p>"
+                }
+                "BUTTON" -> {
+                    val onClick = if (action != "none") "onclick=\"window.alert('Circuit Action Dispatched: $action \\n\\nThis would normally flip a bit in EpochStateEngine to trigger a mutation!')\"" else ""
+                    html += "<button $onClick style=\"background-color: #3498db; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 4px; cursor: pointer;\">$path</button>"
+                }
+                else -> {
+                    // Fallback for unknown types
+                    html += "<div style=\"font-family: monospace; font-size: 12px; color: #7f8c8d; margin-top: 20px; padding: 10px; background: #f8f9fa;\">"
+                    html += "<strong>Unknown Component ($key):</strong> $type | $path | $action"
+                    html += "</div>"
+                }
+            }
         }
+        
+        // Debug pane showing the matrix layout
+        html += "<hr style=\"margin-top: 40px; border: 0; border-top: 1px solid #eee;\"/>"
+        html += "<h4 style=\"color: #95a5a6; font-family: monospace;\">Raw Memory Matrix (0-alloc)</h4>"
+        html += "<pre style=\"font-size: 10px; color: #bdc3c7; background: #2c3e50; padding: 10px; border-radius: 4px; overflow-x: auto;\">"
+        html += "Active Registry Strings: ${registry.count}\\n"
+        html += "Active Config Buckets: ${config.resources.size}\\n"
+        html += "</pre>"
+        
         html += "</div>"
         
         root.innerHTML = html

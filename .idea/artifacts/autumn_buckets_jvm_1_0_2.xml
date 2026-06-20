@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="autumn-buckets-jvm-1.0.2">
+    <output-path>$PROJECT_DIR$/autumn-buckets/build/libs</output-path>
+    <root id="archive" name="autumn-buckets-jvm-1.0.2.jar">
+      <element id="module-output" name="autumn.autumn-buckets.jvmMain" />
+    </root>
+  </artifact>
+</component>

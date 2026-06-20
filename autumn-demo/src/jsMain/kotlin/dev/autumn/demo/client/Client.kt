@@ -126,11 +126,11 @@ fun main() {
     @NetworkConcurrencyBudget(maxInFlightRequests = 2)
     val maxNetworkCalls = 2 // 1 active list fetch + 1 pending debounce
 
-    @InjectBudget(singleEntityCount = 5, paginatedCollectionCount = 1, slotsPerPage = 5)
-    val bucketConfigLimits = 10 // 5 static UI nodes (title, buttons, search) + (1 list * 5 items)
+    @InjectBudget(fromSchema = "autumn-schema.json")
+    val bucketConfigLimits = 0
 
-    @InjectBudget(entityScope = "StringPointers", singleEntityCount = 40)
-    val stringRegistryLimits = 40 // 4 string pointers (key, type, action, path) per bucket * 10 buckets
+    @InjectBudget(entityScope = "StringPointers", fromSchema = "autumn-schema.json")
+    val stringRegistryLimits = 0
 
     // 2. Initialize the Motherboard with the native JS Fetch client limit bounds
     val motherboard = AutumnMotherboard(

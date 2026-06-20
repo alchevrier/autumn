@@ -15,5 +15,6 @@ annotation class InjectBudget(
     val entityScope: String = "",
     val singleEntityCount: Int = 0,
     val paginatedCollectionCount: Int = 0,
-    val slotsPerPage: Int = 0
+    val slotsPerPage: Int = 0,
+    val fromSchema: String = ""
 )

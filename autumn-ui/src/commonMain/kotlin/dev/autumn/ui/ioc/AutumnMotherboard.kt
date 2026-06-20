@@ -20,11 +20,12 @@ class AutumnMotherboard(
     networkClient: RawNetworkClient,
     stringRegistryBudget: Int = 1000,
     concurrencyBudget: Int = 10,
-    epochMatrixBudget: Int = 200
+    epochMatrixBudget: Int = 200,
+    configBucketsBudget: Int = 100
 ) {
     // 1. Memory / L1 Cache
     val stringRegistry = StringRegistry(stringRegistryBudget)
-    val configManager = ConfigManager(100) // Hardware buckets configuration
+    val configManager = ConfigManager(configBucketsBudget) // Hardware buckets configuration
 
     // 2. State Engine (Interrupt Moderation)
     val stateEngine = EpochStateEngine(epochMatrixBudget)

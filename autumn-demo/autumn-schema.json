@@ -1,0 +1,9 @@
+{
+  "screens": {
+    "list": {
+      "staticComponents": 5,
+      "paginatedLists": 1,
+      "itemsPerPage": 5
+    }
+  }
+}

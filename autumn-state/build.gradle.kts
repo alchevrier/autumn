@@ -5,7 +5,7 @@ plugins {
 
 kotlin {
     jvm()
-    js(IR) { browser() }
+    js(IR) { nodejs() }
 
     sourceSets {
         commonMain.dependencies {

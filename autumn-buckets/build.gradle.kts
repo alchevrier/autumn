@@ -5,14 +5,8 @@ plugins {
 
 kotlin {
     jvm()
-    js { 
-        browser {
-            testTask {
-                useKarma {
-                    useNodeJs()
-                }
-            }
-        } 
+    js {
+        nodejs()
     }
 
     sourceSets {
@@ -24,4 +18,3 @@ kotlin {
         }
     }
 }
-

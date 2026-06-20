@@ -36,6 +36,8 @@ class DemoCircuitBinder(
     fun renderTo(elementId: String) {
         val root = document.getElementById(elementId) ?: return
         
+        val currentFocusId = document.activeElement?.id?.takeIf { it.isNotEmpty() }
+        
         // Build the HTML by looking straight at the config buckets without allocating DTOs!
         val config = motherboard.configManager
         val registry = motherboard.stringRegistry
@@ -60,12 +62,11 @@ class DemoCircuitBinder(
                     html += "<p style=\"color: #34495e; line-height: 1.6; margin-bottom: 20px;\">$path</p>"
                 }
                 "INPUT" -> {
-                    html += "<input type=\"text\" placeholder=\"$path\" value=\"$currentFilter\" oninput=\"window.autumnFilter(this.value)\" style=\"width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;\"/>"
+                    html += "<input id=\"autumn-search\" type=\"text\" placeholder=\"$path\" value=\"$currentFilter\" oninput=\"window.autumnFilter(this.value)\" style=\"width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;\"/>"
                 }
                 "ITEM" -> {
-                    if (currentFilter.isEmpty() || path.contains(currentFilter, ignoreCase = true)) {
-                        html += "<div style=\"padding: 15px; border-bottom: 1px solid #eee; color: #2c3e50;\">👉 $path</div>"
-                    }
+                    // Filter is applied securely on the backend now. Zero-alloc mapping displays directly.
+                    html += "<div style=\"padding: 15px; border-bottom: 1px solid #eee; color: #2c3e50;\">👉 $path</div>"
                 }
                 "BUTTON" -> {
                     if (action.startsWith("navigate:")) {
@@ -97,6 +98,15 @@ class DemoCircuitBinder(
         html += "</div>"
         
         root.innerHTML = html
+
+        if (currentFocusId != null) {
+            val el = document.getElementById(currentFocusId) as? org.w3c.dom.HTMLInputElement
+            if (el != null) {
+                el.focus()
+                val len = el.value.length
+                el.setSelectionRange(len, len)
+            }
+        }
     }
 }
 
@@ -117,10 +127,13 @@ fun main() {
     )
 
     val binder = DemoCircuitBinder(motherboard)
+    var filterTimeout: Int = 0
 
     // Bridge JS Native events to Autumn circuit triggers
     window.asDynamic().autumnNavigate = { target: String ->
-        currentFilter = "" // Reset filter state on page load
+        if (!target.contains("query=")) {
+            currentFilter = "" // Reset filter state on new context
+        }
         GlobalScope.launch {
             motherboard.hardReset() // Flush buckets cleanly
             val slot = motherboard.networkEngine.claimSlot()
@@ -132,7 +145,17 @@ fun main() {
 
     window.asDynamic().autumnFilter = { query: String ->
         currentFilter = query
-        binder.renderTo("root")
+        window.clearTimeout(filterTimeout)
+        filterTimeout = window.setTimeout({
+            GlobalScope.launch {
+                motherboard.hardReset()
+                val slot = motherboard.networkEngine.claimSlot()
+                if (slot >= 0) {
+                    val encoded = js("window.encodeURIComponent(query)") as String
+                    motherboard.networkEngine.executeInPlace(slot, "/api/state/list?query=${encoded}", "GET", null)
+                }
+            }
+        }, 300)
     }
 
     // 2. Attach to the Epoch Pulse (FSM / Event Loop)

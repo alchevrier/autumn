@@ -50,18 +50,43 @@ fun main() {
 
             // REST API endpoint: Filterable List
             get("/api/state/list") {
+                val query = call.request.queryParameters["query"]?.takeIf { it.isNotBlank() } ?: ""
+                val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
+                val pageSize = 5
+                val allEmployees = listOf(
+                    "Alice Chevrier - Architecture", "Bob Smith - Marketing", "Charlie Davis - Design",
+                    "Diana Ross - Product", "Evan Wright - Engineering", "Fiona Gallagher - HR",
+                    "George Best - Sales", "Hannah Abbott - Finance", "Ian Somerhalder - Legal",
+                    "Jack Bauer - IT", "Kelly Kapoor - Support", "Liam Gallagher - Ops",
+                    "Monica Geller - QA", "Ned Stark - Security", "Olivia Pope - PR"
+                )
+                
+                val filtered = allEmployees.filter { it.contains(query, ignoreCase = true) }
+                val totalPages = maxOf(1, (filtered.size + pageSize - 1) / pageSize)
+                val paged = filtered.drop((page - 1) * pageSize).take(pageSize)
+                
+                val itemsJson = paged.mapIndexed { index, emp ->
+                    """"emp-$index": { "type": "ITEM", "path": "$emp", "action": "none" }"""
+                }.joinToString(",\n                            ")
+                
+                val prevBtn = if (page > 1) 
+                    """"prev-btn": { "type": "BUTTON", "path": "← Prev Page", "action": "navigate:/api/state/list?page=${page - 1}&query=$query" },""" 
+                else ""
+                    
+                val nextBtn = if (page < totalPages) 
+                    """"next-btn": { "type": "BUTTON", "path": "Next Page →", "action": "navigate:/api/state/list?page=${page + 1}&query=$query" },""" 
+                else ""
+
                 call.respondText(
                     """
                     {
                         "resources": {
-                            "list-title": { "type": "TITLE", "path": "Employee Directory", "action": "none" },
+                            "list-title": { "type": "TITLE", "path": "Employee Directory (Page $page of $totalPages)", "action": "none" },
                             "back-btn": { "type": "BUTTON", "path": "← Back to Home", "action": "navigate:/api/state/home" },
-                            "filter-input": { "type": "INPUT", "path": "Search employees...", "action": "filter" },
-                            "emp-1": { "type": "ITEM", "path": "Alice Chevrier - Architecture", "action": "none" },
-                            "emp-2": { "type": "ITEM", "path": "Bob Smith - Marketing", "action": "none" },
-                            "emp-3": { "type": "ITEM", "path": "Charlie Davis - Design", "action": "none" },
-                            "emp-4": { "type": "ITEM", "path": "Diana Ross - Product", "action": "none" },
-                            "emp-5": { "type": "ITEM", "path": "Evan Wright - Engineering", "action": "none" }
+                            "filter-input": { "type": "INPUT", "path": "Search $query...", "action": "filter" },
+                            $prevBtn
+                            $nextBtn
+                            ${if (itemsJson.isNotEmpty()) itemsJson else """"empty": { "type": "TEXT", "path": "No employees found.", "action": "none" }"""}
                         }
                     }
                     """.trimIndent(),

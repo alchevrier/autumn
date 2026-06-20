@@ -1,7 +1,6 @@
 plugins {
     kotlin("jvm") version "2.1.21"
     `java-gradle-plugin`
-    `maven-publish`
 }
 
 group = "io.github.alchevrier"

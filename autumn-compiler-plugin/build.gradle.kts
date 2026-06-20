@@ -1,6 +1,5 @@
 plugins {
     kotlin("jvm")
-    `maven-publish`
 }
 
 group = "io.github.alchevrier"
@@ -13,16 +12,5 @@ tasks.withType<JavaCompile> {
 
 dependencies {
     compileOnly("org.jetbrains.kotlin:kotlin-compiler-embeddable:2.1.21")
-    
     testImplementation("org.jetbrains.kotlin:kotlin-test")
-}
-
-// Ensure the compiler plugin is published/packaged appropriately if needed later.
-
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            from(components["java"])
-        }
-    }
 }

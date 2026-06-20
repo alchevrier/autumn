@@ -24,6 +24,9 @@ class JsFetchNetworkClient : RawNetworkClient {
     }
 }
 
+// Global filter state simulating native form boundaries
+var currentFilter: String = ""
+
 class DemoCircuitBinder(
     private val motherboard: AutumnMotherboard
 ) : AutumnCircuitBinder(
@@ -56,9 +59,23 @@ class DemoCircuitBinder(
                 "TEXT" -> {
                     html += "<p style=\"color: #34495e; line-height: 1.6; margin-bottom: 20px;\">$path</p>"
                 }
+                "INPUT" -> {
+                    html += "<input type=\"text\" placeholder=\"$path\" value=\"$currentFilter\" oninput=\"window.autumnFilter(this.value)\" style=\"width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;\"/>"
+                }
+                "ITEM" -> {
+                    if (currentFilter.isEmpty() || path.contains(currentFilter, ignoreCase = true)) {
+                        html += "<div style=\"padding: 15px; border-bottom: 1px solid #eee; color: #2c3e50;\">👉 $path</div>"
+                    }
+                }
                 "BUTTON" -> {
-                    val onClick = if (action != "none") "onclick=\"window.alert('Circuit Action Dispatched: $action \\n\\nThis would normally flip a bit in EpochStateEngine to trigger a mutation!')\"" else ""
-                    html += "<button $onClick style=\"background-color: #3498db; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 4px; cursor: pointer;\">$path</button>"
+                    if (action.startsWith("navigate:")) {
+                        val target = action.substringAfter("navigate:")
+                        val onClick = "onclick=\"window.autumnNavigate('$target')\""
+                        html += "<button $onClick style=\"background-color: #3498db; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 4px; cursor: pointer; margin-right: 10px; margin-bottom: 20px;\">$path</button>"
+                    } else {
+                        val onClick = "onclick=\"window.alert('Circuit Action Dispatched: $action')\""
+                        html += "<button $onClick style=\"background-color: #2ecc71; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 4px; cursor: pointer; margin-right: 10px; margin-bottom: 20px;\">$path</button>"
+                    }
                 }
                 else -> {
                     // Fallback for unknown types
@@ -101,6 +118,23 @@ fun main() {
 
     val binder = DemoCircuitBinder(motherboard)
 
+    // Bridge JS Native events to Autumn circuit triggers
+    window.asDynamic().autumnNavigate = { target: String ->
+        currentFilter = "" // Reset filter state on page load
+        GlobalScope.launch {
+            motherboard.hardReset() // Flush buckets cleanly
+            val slot = motherboard.networkEngine.claimSlot()
+            if (slot >= 0) {
+                motherboard.networkEngine.executeInPlace(slot, target, "GET", null)
+            }
+        }
+    }
+
+    window.asDynamic().autumnFilter = { query: String ->
+        currentFilter = query
+        binder.renderTo("root")
+    }
+
     // 2. Attach to the Epoch Pulse (FSM / Event Loop)
     binder.attachToInterruptWire(GlobalScope) {
         // Redraw strictly on pulse
@@ -114,7 +148,7 @@ fun main() {
         console.log("Executing network request through Autumn Circuit...")
         val slot = motherboard.networkEngine.claimSlot()
         if (slot >= 0) {
-            motherboard.networkEngine.executeInPlace(slot, "/api/state", "GET", null)
+            motherboard.networkEngine.executeInPlace(slot, "/api/state/home", "GET", null)
         } else {
             console.log("Circuit breaker tripped: Budget Exhausted")
         }

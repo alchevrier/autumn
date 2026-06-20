@@ -52,6 +52,7 @@ class AutumnMotherboard(
      */
     fun hardReset() {
         stringRegistry.clear()
+        configManager.clear()
         // Resetting epochs and network locks implies just wiping their IntArrays,
         // maintaining the static zero-allocation guarantees across user session resets.
     }

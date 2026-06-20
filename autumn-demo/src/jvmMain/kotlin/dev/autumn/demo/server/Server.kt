@@ -19,8 +19,8 @@ fun main() {
         }
         
         routing {
-            // REST API endpoint
-            get("/api/state") {
+            // REST API endpoint: Home Dashboard
+            get("/api/state/home") {
                 // Return a static JSON representation of a zero-allocation schema
                 call.respondText(
                     """
@@ -28,19 +28,40 @@ fun main() {
                         "resources": {
                             "hero-title": {
                                 "type": "TITLE",
-                                "path": "Welcome to Autumn Circuit",
+                                "path": "Home Dashboard",
                                 "action": "none"
                             },
                             "description-text": {
                                 "type": "TEXT",
-                                "path": "This UI is natively bound with zero heap allocations for DTOs. The JSON payload was mapped directly to a flat Integer Matrix.",
+                                "path": "Welcome to the zero-allocation browser. Click below to load a dynamic list of employees.",
                                 "action": "none"
                             },
-                            "action-button": {
+                            "nav-btn": {
                                 "type": "BUTTON",
-                                "path": "Trigger Hardware Interrupt",
-                                "action": "alert"
+                                "path": "View Employee List",
+                                "action": "navigate:/api/state/list"
                             }
+                        }
+                    }
+                    """.trimIndent(),
+                    contentType = ContentType.Application.Json
+                )
+            }
+
+            // REST API endpoint: Filterable List
+            get("/api/state/list") {
+                call.respondText(
+                    """
+                    {
+                        "resources": {
+                            "list-title": { "type": "TITLE", "path": "Employee Directory", "action": "none" },
+                            "back-btn": { "type": "BUTTON", "path": "← Back to Home", "action": "navigate:/api/state/home" },
+                            "filter-input": { "type": "INPUT", "path": "Search employees...", "action": "filter" },
+                            "emp-1": { "type": "ITEM", "path": "Alice Chevrier - Architecture", "action": "none" },
+                            "emp-2": { "type": "ITEM", "path": "Bob Smith - Marketing", "action": "none" },
+                            "emp-3": { "type": "ITEM", "path": "Charlie Davis - Design", "action": "none" },
+                            "emp-4": { "type": "ITEM", "path": "Diana Ross - Product", "action": "none" },
+                            "emp-5": { "type": "ITEM", "path": "Evan Wright - Engineering", "action": "none" }
                         }
                     }
                     """.trimIndent(),

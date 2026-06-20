@@ -1,6 +1,8 @@
 package dev.autumn.demo.client
 
 import dev.autumn.annotations.LongLived
+import dev.autumn.annotations.InjectBudget
+import dev.autumn.annotations.NetworkConcurrencyBudget
 import dev.autumn.ui.ioc.AutumnMotherboard
 import dev.autumn.resolver.handoff.RawNetworkClient
 import dev.autumn.ui.AutumnCircuitBinder
@@ -118,12 +120,25 @@ fun main() {
         root.innerHTML = "<h3>Waking up hardware matrix...</h3>"
     }
 
-    // 1. Initialize the Motherboard with the native JS Fetch client limit bounds
+    // 1. Compile-Time Memory Matrix Definitions
+    // The exact structural limits of the 'Employee List' view are used to cap memory allocation.
+
+    @NetworkConcurrencyBudget(maxInFlightRequests = 2)
+    val maxNetworkCalls = 2 // 1 active list fetch + 1 pending debounce
+
+    @InjectBudget(singleEntityCount = 5, paginatedCollectionCount = 1, slotsPerPage = 5)
+    val bucketConfigLimits = 10 // 5 static UI nodes (title, buttons, search) + (1 list * 5 items)
+
+    @InjectBudget(entityScope = "StringPointers", singleEntityCount = 40)
+    val stringRegistryLimits = 40 // 4 string pointers (key, type, action, path) per bucket * 10 buckets
+
+    // 2. Initialize the Motherboard with the native JS Fetch client limit bounds
     val motherboard = AutumnMotherboard(
         networkClient = JsFetchNetworkClient(),
-        stringRegistryBudget = 100,
-        concurrencyBudget = 5,
-        epochMatrixBudget = 10
+        stringRegistryBudget = stringRegistryLimits,
+        concurrencyBudget = maxNetworkCalls,
+        epochMatrixBudget = 2,
+        configBucketsBudget = bucketConfigLimits
     )
 
     val binder = DemoCircuitBinder(motherboard)

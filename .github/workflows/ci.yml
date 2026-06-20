@@ -60,9 +60,10 @@ jobs:
     - name: Publish to Sonatype Maven Central
       run: |
         echo "${{ secrets.SIGNING_KEY_BASE64 }}" | base64 -d > secring.gpg
-        export ORG_GRADLE_PROJECT_signingSecretKeyFile="$PWD/secring.gpg"
+        export ORG_GRADLE_PROJECT_signingInMemoryKey="$(cat secring.gpg)"
+        
         ./gradlew publishAndReleaseToMavenCentral
       env:
         ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
         ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
-        ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.SIGNING_PASSWORD }}
+        ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}

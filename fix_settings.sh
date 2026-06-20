@@ -1,0 +1,1 @@
+sed -i '/repositories {/i \    dependencyResolutionManagement {\n        repositories {\n            mavenLocal()\n            google()\n            mavenCentral()\n            gradlePluginPortal()\n        }\n    }' settings.gradle.kts

@@ -19,7 +19,7 @@ subprojects {
     apply(plugin = "org.jetbrains.kotlinx.kover")
     apply(plugin = "com.vanniktech.maven.publish")
 
-    mavenPublishing {
+    configure<com.vanniktech.maven.publish.MavenPublishBaseExtension> {
         publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL)
         signAllPublications()
         

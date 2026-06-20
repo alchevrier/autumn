@@ -95,7 +95,7 @@ Architectural decisions live in [`docs/adr/`](docs/adr) and capture the initial 
 - ADR-0002 — Bucket Source Decoupling via Configuration
 - ADR-0003 — Remote Configuration Versioning
 - ADR-0004 — Interaction Conventions
-- ADR-0005 — IoC Container and Lazy Initialization
+- ADR-0005 — System-on-a-Chip (SoC) Static Composition Root (Replaces Lazy IoC)
 - ADR-0006 — Zero-Allocation JSON Data Model
 - ADR-0007 — Paginated List Rendering and GC Reduction
 - ADR-0008 — Form State Management via Pre-Allocated Slots

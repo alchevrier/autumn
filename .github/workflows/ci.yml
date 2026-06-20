@@ -60,7 +60,7 @@ jobs:
     - name: Prepare Cryptographic Key
       run: |
         EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
-        echo "ORG_GRADLE_PROJECT_signingInMemoryKey<<$EOF" >> "$GITHUB_ENV"
+        echo "ORG_GRADLE_PROJECT_signingKey<<$EOF" >> "$GITHUB_ENV"
         echo "${{ secrets.SIGNING_KEY_BASE64 }}" | base64 -d >> "$GITHUB_ENV"
         echo "" >> "$GITHUB_ENV"
         echo "$EOF" >> "$GITHUB_ENV"
@@ -70,4 +70,4 @@ jobs:
       env:
         ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
         ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
-        ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
+        ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.SIGNING_PASSWORD }}

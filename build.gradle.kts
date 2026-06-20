@@ -35,3 +35,12 @@ subprojects {
         }
     }
 }
+
+subprojects {
+    // Workaround for Kover + Gradle 9 temporary directory race conditions
+    tasks.withType<Test>().configureEach {
+        doFirst {
+            project.layout.buildDirectory.dir("tmp/${name}").get().asFile.mkdirs()
+        }
+    }
+}

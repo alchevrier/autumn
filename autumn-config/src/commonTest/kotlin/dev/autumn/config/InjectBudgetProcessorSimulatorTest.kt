@@ -1,6 +1,7 @@
 package dev.autumn.config
 
 import dev.autumn.annotations.InjectBudget
+import dev.autumn.annotations.LongLived
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -11,6 +12,7 @@ import kotlin.test.assertEquals
  * In a real circuit-based environment, this logic executes statically 
  * replacing the right-hand-side expression with a constant Int.
  */
+@LongLived
 class InjectBudgetProcessorSimulatorTest {
 
     // Simulates the compiler plugin visiting an AST node with @InjectBudget

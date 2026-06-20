@@ -58,9 +58,10 @@ jobs:
       run: ./gradlew :autumn-compiler-plugin:publishToMavenLocal
 
     - name: Publish to Sonatype Maven Central
-      run: ./gradlew publishAndReleaseToMavenCentral
+      run: |
+        export ORG_GRADLE_PROJECT_signingInMemoryKey=$(echo "${{ secrets.SIGNING_KEY_BASE64 }}" | base64 -d)
+        ./gradlew publishAndReleaseToMavenCentral
       env:
         ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
         ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
-        ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
         ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}

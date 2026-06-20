@@ -3,7 +3,7 @@ plugins {
     `maven-publish`
 }
 
-group = "dev.autumn"
+group = "io.github.alchevrier"
 version = "1.0.2"
 
 tasks.withType<JavaCompile> {

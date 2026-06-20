@@ -4,7 +4,7 @@ plugins {
 }
 
 allprojects {
-    group = "dev.autumn"
+    group = "io.github.alchevrier"
     version = "1.0.2"
 
     repositories {

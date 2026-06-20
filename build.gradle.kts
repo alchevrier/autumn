@@ -16,7 +16,9 @@ subprojects {
 
     configure<com.vanniktech.maven.publish.MavenPublishBaseExtension> {
         publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL)
-        signAllPublications()
+        if (project.hasProperty("signingInMemoryKey")) {
+            signAllPublications()
+        }
         
         coordinates("io.github.alchevrier", project.name, "1.0.2")
 

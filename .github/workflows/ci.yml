@@ -54,6 +54,9 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
+    - name: Publish Compiler Plugin to Maven Local
+      run: ./gradlew :autumn-compiler-plugin:publishToMavenLocal
+
     - name: Publish to Sonatype Maven Central
       run: ./gradlew publish
       env:

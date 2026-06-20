@@ -5,7 +5,15 @@ plugins {
 
 kotlin {
     jvm()
-    js { browser() }
+    js { 
+        browser {
+            testTask {
+                useKarma {
+                    useNodeJs()
+                }
+            }
+        } 
+    }
 
     sourceSets {
         commonMain.dependencies {

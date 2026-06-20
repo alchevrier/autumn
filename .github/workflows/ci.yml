@@ -66,6 +66,6 @@ jobs:
         echo "$EOF" >> "$GITHUB_ENV"
 
     - name: Publish to Sonatype Maven Central
-      run: .\/gradlew publishAndReleaseToMavenCentral -PmavenCentralUsername="${{ secrets.MAVEN_CENTRAL_USERNAME }}" -PmavenCentralPassword="${{ secrets.MAVEN_CENTRAL_PASSWORD }}"
+      run: ./gradlew publishAndReleaseToMavenCentral -PmavenCentralUsername="${{ secrets.MAVEN_CENTRAL_USERNAME }}" -PmavenCentralPassword="${{ secrets.MAVEN_CENTRAL_PASSWORD }}"
       env:
         ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.SIGNING_PASSWORD }}

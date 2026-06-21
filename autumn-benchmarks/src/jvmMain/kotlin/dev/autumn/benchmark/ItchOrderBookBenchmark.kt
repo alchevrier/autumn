@@ -177,7 +177,9 @@ open class ItchOrderBookBenchmark {
             currentState = STATE_IDLE
         }
         
-        // Final clock tick notifying subscribers of state mutation
+        // Final clock tick notifying subscribers of state mutation.
+        // For subscribers bound to the Best Bid/Ask or Order Book depth, 
+        // this single coalesced interrupt tells their strategies they are clear to execute.
         motherboard.stateEngine.incrementEpoch(0)
     }
 }

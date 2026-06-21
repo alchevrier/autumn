@@ -47,6 +47,9 @@ jobs:
     - name: Publish Compiler Plugin to Maven Local
       run: ./gradlew :autumn-compiler-plugin:publishToMavenLocal
     - name: Prepare Cryptographic Key and Credentials
+      env:
+        RAW_USER: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+        RAW_PASS: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
       run: |
         EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
         echo "ORG_GRADLE_PROJECT_signingKey<<$EOF" >> "$GITHUB_ENV"
@@ -54,10 +57,17 @@ jobs:
         echo "" >> "$GITHUB_ENV"
         echo "$EOF" >> "$GITHUB_ENV"
         
-        CLEAN_USER=$(echo -n "${{ secrets.MAVEN_CENTRAL_USERNAME }}" | tr -d '[:space:]')
-        CLEAN_PASS=$(echo -n "${{ secrets.MAVEN_CENTRAL_PASSWORD }}" | tr -d '[:space:]')
-        echo "ORG_GRADLE_PROJECT_mavenCentralUsername=$CLEAN_USER" >> "$GITHUB_ENV"
-        echo "ORG_GRADLE_PROJECT_mavenCentralPassword=$CLEAN_PASS" >> "$GITHUB_ENV"
+        EOF_USER=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+        echo "ORG_GRADLE_PROJECT_mavenCentralUsername<<$EOF_USER" >> "$GITHUB_ENV"
+        echo -n "$RAW_USER" | tr -d '[:space:]' >> "$GITHUB_ENV"
+        echo "" >> "$GITHUB_ENV"
+        echo "$EOF_USER" >> "$GITHUB_ENV"
+        
+        EOF_PASS=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+        echo "ORG_GRADLE_PROJECT_mavenCentralPassword<<$EOF_PASS" >> "$GITHUB_ENV"
+        echo -n "$RAW_PASS" | tr -d '[:space:]' >> "$GITHUB_ENV"
+        echo "" >> "$GITHUB_ENV"
+        echo "$EOF_PASS" >> "$GITHUB_ENV"
     - name: Publish to Sonatype Maven Central
       run: ./gradlew publishAndReleaseToMavenCentral
       env:

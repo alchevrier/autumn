@@ -13,19 +13,24 @@ While Kotlin/Native provides bare-metal execution, strict memory boundaries, and
 ## Decision
 We officially establish a **Kotlin Multiplatform (KMP) `commonMain`** strategy for the execution of "Circuit-Based Programming". The core engine (FSMs, lock-free ring-buffers, flat primitive SoA structures, and strictly budgeted arrays) will be maintained in pure Kotlin `commonMain`.
 
-Rather than abandoning the JVM, we leverage the zero-allocation/primitive-array structure to achieve ultra-performance gracefully across the appropriate backend compiler targets:
+Rather than abandoning the JVM, we leverage the zero-allocation/primitive-array structure to achieve ultra-performance gracefully across the appropriate backend compiler targets. Crucially, the compiler plugin applies **Platform-Specific Graceful Degradation** for hardware features (like IRQ eviction) that are impossible on locked-down consumer OSs.
 
-1. **Kotlin/Native (LLVM) for HFT and Apple (iOS/macOS):**
-   - **HFT:** Compiles to raw Linux machine code (`linuxX64`), enabling `/dev/shm` IPC Shared Memory, `pthread` core pinning, and DMA register pointer handoffs.
-   - **Apple:** Compiles to native Mach-O binaries. Eliminates the need for any virtual machine on iPhones, bypassing GC for strictly 120fps UI rendering.
+1. **Kotlin/Native (LLVM) for Linux HFT (Bare-Metal):**
+   - **Mechanism:** Compiles to raw Linux machine code (`linuxX64`). The compiler plugin generates `isolcpus`/`nohz_full` boot parameters, `pthread` core pinning, `/dev/shm` IPC Shared Memory, and DMA register pointer handoffs. This provides absolute zero-jitter execution.
 
-2. **Kotlin/JVM (ART) for Android:**
-   - **Rationale:** Android's entire host API, drivers, and UI toolkit (Jetpack Compose) live in the Android Runtime (ART). Executing business logic in Kotlin/Native on Android requires crossing a JNI (Java Native Interface) bridge for every event, which ironically introduces severe microsecond-latency penalties on every UI frame.
-   - **Mechanism:** By targeting Kotlin/JVM, Autumn executes natively in the ART. Because Autumn operates entirely via pre-budgeted primitives and generates zero garbage objects, the Android Garbage Collector never triggers. It achieves predictable C++ tier stability *without* the JNI bottleneck.
+2. **Kotlin/Native (LLVM) for Apple (iOS/macOS):**
+   - **Mechanism:** Compiles to native Mach-O binaries. Since iOS is a locked-down kernel (no GRUB boot param access or absolute thread pinning), the compiler strips out the raw `pthread_setaffinity_np` logic and translates `@ExecutionNode` directives into high-priority Grand Central Dispatch (GCD) QoS queues. There is no IRQ eviction, but the zero-allocation logic still bypasses the objective-C/Swift ARC or GC entirely, guaranteeing stable 120fps UI rendering.
 
-3. **Kotlin/JVM (HotSpot) for Cloud Backends:**
-   - **Rationale:** The modern JVM JIT (Just-In-Time) compiler excels at dynamic method in-lining based on live branch-prediction data, offering higher peak throughput than static LLVM in massive routing scenarios.
-   - **Mechanism:** Autumn naturally eliminates the JVM's sole bottleneck (GC pauses and heap fragmentation). This gives cloud microservices the deterministic tail-latency of an FPGA with the raw throughput optimization of HotSpot.
+3. **Kotlin/JVM (ART) for Android:**
+   - **Rationale:** Android's host API and UI toolkit (Jetpack Compose) live in the Android Runtime (ART). Executing in pure Native requires a costly JNI (Java Native Interface) bridge.
+   - **Mechanism:** Autumn compiles its standard zero-allocation FSM into JVM bytecode. Like iOS, thread-pinning is delegated to Android's high-priority Looper/Handler threads. Because it generates zero garbage objects, Dalvik/ART GC pauses never trigger, achieving predictable stability without the JNI bottleneck or root kernel access.
+
+4. **WebAssembly (WASM) for the Web:**
+   - **Mechanism:** Modern browsers restrict memory and thread access heavily. The compiler plugin detects the `wasm32` target and gracefully translates `@Wire` annotations into `SharedArrayBuffer` structures passing messages between Web Workers. This unlocks lock-free execution directly in Chrome/Safari while playing completely within browser security sandbox limits.
+
+5. **Kotlin/JVM (HotSpot) for Cloud Backends:**
+   - **Rationale:** The modern JVM JIT excels at dynamic method in-lining yielding massive peak throughput.
+   - **Mechanism:** Autumn eliminates the JVM's sole bottleneck (GC pauses). This gives cloud backends deterministic tail-latency with HotSpot throughput optimizations, mapping threads to standard JVM thread pools when run in containerized (Docker/K8s) environments where bare-metal OS partitioning isn't possible.
 
 ## Consequences
 - **Positive:** We achieve a write-once, deploy-anywhere architectural standard that maintains sub-microsecond tail latencies natively.

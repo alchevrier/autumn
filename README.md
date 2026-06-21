@@ -7,7 +7,9 @@ Circuit-based, zero-allocation frontend skeleton for mobile and web.
 
 ## What is Autumn?
 
-Autumn is a Kotlin Multiplatform framework built around a **circuit-based programming model** for commodity hardware. It decouples core state logic from platform-specific rendering while enforcing strict memory bounds by design. By bypassing the garbage collector and eliminating pointer indirection, Autumn guarantees deterministic, zero-latency rendering using lock-free arrays and emulated hardware interrupts.
+Autumn is a Kotlin Multiplatform framework built around a **circuit-based programming model** for commodity hardware. Originally conceived to eliminate GC pauses in UI state management, it has evolved into a full High-Level Synthesis (HLS) framework for CPUs capable of building bare-metal High-Frequency Trading (HFT) pipelines natively.
+
+It decouples core logic into Finite State Machines (FSMs), enforces strict memory bounds by design (Structure-of-Arrays), and overrides standard OS function calls via custom compiler plugins to create lock-free primitive ring-buffer wires (`mmap` IPC and thread-pinned data pipelines). By bypassing the garbage collector and eliminating pointer indirection, Autumn guarantees deterministic, nanosecond-tier latency across Linux HFT servers, Android (via ART), iOS (via Mach-O LLVM), and the Web.
 
 ## Core pipeline: Socket to Pixel
 
@@ -35,6 +37,7 @@ Because the backend is treated as an external commodity out-of-bounds, Autumn do
 - `autumn-resolver` — deterministic network boundary (`AutumnNetworkEngine`) executing in-place handoffs.
 - `autumn-config` — zero-allocation payload string registry and hardware matrix limit calculator (`JsonConfigParser`).
 - `autumn-ui` — native rendering bridge linking platform Canvas text exactly to byte indices (`AutumnCircuitBinder`, `AutumnMotherboard`).
+- `autumn-benchmarks` — bare-metal algorithmic latency analysis proving sub-microsecond throughput (e.g. ITCH 5.0 Order Books).
 
 ## Architecture
 
@@ -81,6 +84,7 @@ autumn-config/             # Zero-alloc JSON parsing and registries
 autumn-buckets/            # Content offset mappers
 autumn-state/              # Circuit-based Epoch observer
 autumn-ui/                 # SoC Motherboard and Native UI Compose Binder
+autumn-benchmarks/         # JMH latency profiling and zero-allocation hardware proofs
 ```
 
 ## Getting started
@@ -104,6 +108,8 @@ Architectural decisions live in [`docs/adr/`](docs/adr) and capture the initial 
 - ADR-0011 — Interaction and Entity Schema Contract
 - ADR-0012 — Circuit-Based Data Pipeline and Interrupt Moderation
 - ADR-0013 — The Circuit Skeleton as a Commodity Backend Consumer
+- ADR-0014 — Kotlin Native HFT Pipeline and Thread Pinning
+- ADR-0015 — Kotlin Multiplatform Unification for Universal Circuit Programming
 
 ## Integration example (Jetpack Compose)
 

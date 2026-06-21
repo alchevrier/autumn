@@ -1,4 +1,4 @@
-# 8. Kotlin Native HFT Pipeline and Thread Pinning
+# 14. Kotlin Native HFT Pipeline and Thread Pinning
 
 Date: 2026-06-21
 

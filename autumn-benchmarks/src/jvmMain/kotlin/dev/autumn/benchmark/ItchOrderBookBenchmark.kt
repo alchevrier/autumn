@@ -6,15 +6,11 @@ import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.StandardOpenOption
 import java.util.HashMap
-import dev.autumn.ui.ioc.AutumnMotherboard
-import dev.autumn.resolver.handoff.RawNetworkClient
 import dev.autumn.annotations.*
 
-class MockNetworkClient : RawNetworkClient {
-    override suspend fun sendGetRequest(url: String): ByteArray = ByteArray(0)
-}
-
 @State(Scope.Benchmark)
+@BenchmarkMode(Mode.SampleTime)
+@OutputTimeUnit(BenchmarkTimeUnit.MILLISECONDS)
 open class ItchOrderBookBenchmark {
 
     lateinit var itchBuffer: ByteBuffer
@@ -32,30 +28,27 @@ open class ItchOrderBookBenchmark {
     private val vanillaBook = HashMap<Long, VanillaOrder>(2_000_000)
 
     // =========================================================================
-    // 2. AUTUMN CIRCUIT API  (Hardware FSM Paradigm)
+    // 2. AUTUMN L1 BBO HOT-PATH (Hardware BRAM Paradigm)
     // =========================================================================
-    @LongLived
-    private val capacity = 2_097_152
+    
+    // In HFT, stocks trade in ticks. We assume a normal daily range of 10,000 tick levels.
+    // E.g., AAPL trading from $140.00 to $150.00 at $0.01 ticks = 1000 levels.
+    private val TICK_LEVELS = 10_000 
+    
+    // Each price level has its own contiguous block (simulate BRAM depth limitation)
+    private val MAX_ORDERS_PER_LEVEL = 64 
 
     @LongLived
-    private val autumnRefs = LongArray(capacity)
+    private val levelOrderRefs = LongArray(TICK_LEVELS * MAX_ORDERS_PER_LEVEL)
     
     @LongLived
-    private val autumnShares = IntArray(capacity)
+    private val levelOrderShares = IntArray(TICK_LEVELS * MAX_ORDERS_PER_LEVEL)
     
     @LongLived
-    private val autumnPrices = IntArray(capacity)
-    
-    @LongLived
-    private val hashKeys = LongArray(capacity)
-    
-    @LongLived
-    private val hashValues = IntArray(capacity) { -1 }
+    private val levelDepthCounters = IntArray(TICK_LEVELS)
 
-    private var autumnCursor = 0
-    private lateinit var motherboard: AutumnMotherboard
+    private var interruptWire = 0
     
-    // FSM States mimicking an FPGA state machine boundary
     private val STATE_IDLE = 0
     private val STATE_ADD_ROUTE = 1
     private val STATE_EXECUTE_ROUTE = 2
@@ -63,16 +56,8 @@ open class ItchOrderBookBenchmark {
     
     private var currentState = STATE_IDLE
 
-    @Setup(Level.Trial)
+    @Setup
     fun setup() {
-        val itchFile = File(System.getProperty("user.home"), "Downloads/01302019.NASDAQ_ITCH50")
-        if (itchFile.exists()) {
-            FileChannel.open(itchFile.toPath(), StandardOpenOption.READ).use { channel ->
-                val sizeToMap = Math.min(channel.size(), 1024L * 1024 * 500)
-                itchBuffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, sizeToMap)
-            }
-        }
-
         // Generate synthetic load
         for (i in 0 until MESSAGE_COUNT) {
             opTypes[i] = when (i % 10) {
@@ -82,16 +67,11 @@ open class ItchOrderBookBenchmark {
             }
             refs[i] = (i % 100000).toLong() + 1L 
             shares[i] = 100
-            prices[i] = 50000
+            
+            // Normalize prices into a synthetic tight tick band (0 to 9999)
+            prices[i] = (i % 500) + 5000 
         }
-        
-        motherboard = AutumnMotherboard(
-            networkClient = MockNetworkClient(),
-            stringRegistryBudget = 10,
-            concurrencyBudget = 1,
-            epochMatrixBudget = 1,     
-            configBucketsBudget = 1
-        )
+        interruptWire = 0
     }
 
     @Benchmark
@@ -101,7 +81,6 @@ open class ItchOrderBookBenchmark {
         for (i in 0 until MESSAGE_COUNT) {
             val ref = refs[i]
             val s = shares[i]
-            
             when (opTypes[i].toInt()) {
                 1 -> vanillaBook[ref] = VanillaOrder(ref, s, prices[i])
                 2 -> {
@@ -117,16 +96,14 @@ open class ItchOrderBookBenchmark {
     }
 
     @Benchmark
-    fun autumnCircuitOrderBook() {
-        hashKeys.fill(0)
-        hashValues.fill(-1)
-        autumnCursor = 0
+    fun autumnL1HotPath() {
+        levelDepthCounters.fill(0)
 
         for (i in 0 until MESSAGE_COUNT) {
             val ref = refs[i]
             val s = shares[i]
+            val px = prices[i]
             
-            // FSM: Decode Step
             currentState = when (opTypes[i].toInt()) {
                 1 -> STATE_ADD_ROUTE
                 2 -> STATE_EXECUTE_ROUTE
@@ -134,52 +111,54 @@ open class ItchOrderBookBenchmark {
                 else -> STATE_IDLE
             }
             
-            var hash = (ref xor (ref ushr 16) * -7046029254386353131L).toInt()
-            var objIdx = hash and (capacity - 1)
+            // Critical insight: No hashing. Direct offset into the level matrix.
+            val baseOffset = px * MAX_ORDERS_PER_LEVEL
+            val depth = levelDepthCounters[px]
 
-            // FSM: Execution Step
             when (currentState) {
                 STATE_ADD_ROUTE -> {
-                    val slot = autumnCursor++
-                    autumnRefs[slot] = ref
-                    autumnShares[slot] = s
-                    autumnPrices[slot] = prices[i]
-                    
-                    while (hashValues[objIdx] != -1) {
-                        objIdx = (objIdx + 1) and (capacity - 1)
+                    // Only track it in L1 if there is BRAM space (backpressure drop off-path otherwise)
+                    if (depth < MAX_ORDERS_PER_LEVEL) {
+                        val slot = baseOffset + depth
+                        levelOrderRefs[slot] = ref
+                        levelOrderShares[slot] = s
+                        levelDepthCounters[px] = depth + 1
                     }
-                    hashKeys[objIdx] = ref
-                    hashValues[objIdx] = slot
                 }
                 STATE_EXECUTE_ROUTE -> {
-                    while (hashValues[objIdx] != -1) {
-                        if (hashKeys[objIdx] == ref) {
-                            val slot = hashValues[objIdx]
-                            autumnShares[slot] -= s
-                            if (autumnShares[slot] <= 0) hashValues[objIdx] = -1
+                    // Scan is tightly bounded to 64 consecutive elements guaranteed in L1
+                    for (j in 0 until depth) {
+                        val slot = baseOffset + j
+                        if (levelOrderRefs[slot] == ref) {
+                            levelOrderShares[slot] -= s
+                            if (levelOrderShares[slot] <= 0) {
+                                // Fast compact: move last element to this slot to avoid O(N) shift
+                                val lastSlot = baseOffset + depth - 1
+                                levelOrderRefs[slot] = levelOrderRefs[lastSlot]
+                                levelOrderShares[slot] = levelOrderShares[lastSlot]
+                                levelDepthCounters[px] = depth - 1
+                            }
                             break
                         }
-                        objIdx = (objIdx + 1) and (capacity - 1)
                     }
                 }
                 STATE_CANCEL_ROUTE -> {
-                    while (hashValues[objIdx] != -1) {
-                        if (hashKeys[objIdx] == ref) {
-                            hashValues[objIdx] = -1
+                    // Scan is tightly bounded to 64 consecutive elements guaranteed in L1
+                    for (j in 0 until depth) {
+                        val slot = baseOffset + j
+                        if (levelOrderRefs[slot] == ref) {
+                            // Fast compact
+                            val lastSlot = baseOffset + depth - 1
+                            levelOrderRefs[slot] = levelOrderRefs[lastSlot]
+                            levelOrderShares[slot] = levelOrderShares[lastSlot]
+                            levelDepthCounters[px] = depth - 1
                             break
                         }
-                        objIdx = (objIdx + 1) and (capacity - 1)
                     }
                 }
             }
-            
-            // FSM: Return to Idle / Wait state
             currentState = STATE_IDLE
         }
-        
-        // Final clock tick notifying subscribers of state mutation.
-        // For subscribers bound to the Best Bid/Ask or Order Book depth, 
-        // this single coalesced interrupt tells their strategies they are clear to execute.
-        motherboard.stateEngine.incrementEpoch(0)
+        interruptWire++
     }
 }

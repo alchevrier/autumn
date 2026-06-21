@@ -10,26 +10,20 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v4
-
     - name: Set up JDK 23
       uses: actions/setup-java@v4
       with:
         java-version: '23'
         distribution: 'temurin'
         cache: gradle
-
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
-
     - name: Publish Compiler Plugin to Maven Local
       run: ./gradlew :autumn-compiler-plugin:publishToMavenLocal
-
     - name: Build and Test
       run: ./gradlew koverXmlReport build
-
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
       with:
@@ -40,23 +34,18 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
-    
     steps:
     - uses: actions/checkout@v4
-
     - name: Set up JDK 23
       uses: actions/setup-java@v4
       with:
         java-version: '23'
         distribution: 'temurin'
         cache: gradle
-
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
-
     - name: Publish Compiler Plugin to Maven Local
       run: ./gradlew :autumn-compiler-plugin:publishToMavenLocal
-
     - name: Prepare Cryptographic Key
       run: |
         EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
@@ -64,11 +53,9 @@ jobs:
         echo "${{ secrets.SIGNING_KEY_BASE64 }}" | base64 -d >> "$GITHUB_ENV"
         echo "" >> "$GITHUB_ENV"
         echo "$EOF" >> "$GITHUB_ENV"
-
     - name: Publish to Sonatype Maven Central
-      run: |
-        USER=$(echo -n "${{ secrets.MAVEN_CENTRAL_USERNAME }}" | tr -d '[:space:]')
-        PASS=$(echo -n "${{ secrets.MAVEN_CENTRAL_PASSWORD }}" | tr -d '[:space:]')
-        ./gradlew publishAndReleaseToMavenCentral -PmavenCentralUsername="$USER" -PmavenCentralPassword="$PASS"
+      run: ./gradlew publishAndReleaseToMavenCentral
       env:
+        ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+        ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
         ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.SIGNING_PASSWORD }}

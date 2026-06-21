@@ -1,7 +1,7 @@
 # autumn
 
 ![CI](https://github.com/alchevrier/autumn/actions/workflows/ci.yml/badge.svg)
-![Maven Central](https://img.shields.io/maven-central/v/dev.autumn/autumn-core.svg)
+![Maven Central](https://img.shields.io/maven-central/v/io.github.alchevrier/autumn-core.svg)
 
 Circuit-based, zero-allocation frontend skeleton for mobile and web.
 

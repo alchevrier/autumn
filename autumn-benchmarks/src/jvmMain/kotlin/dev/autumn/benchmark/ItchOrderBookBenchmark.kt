@@ -11,9 +11,7 @@ import dev.autumn.resolver.handoff.RawNetworkClient
 import dev.autumn.annotations.*
 
 class MockNetworkClient : RawNetworkClient {
-    override suspend fun executeRaw(endpoint: String, method: String, requestBody: ByteArray?): Result<ByteArray> {
-        return Result.success(ByteArray(0))
-    }
+    override suspend fun sendGetRequest(url: String): ByteArray = ByteArray(0)
 }
 
 @State(Scope.Benchmark)
@@ -27,9 +25,15 @@ open class ItchOrderBookBenchmark {
     private val shares = IntArray(MESSAGE_COUNT)
     private val prices = IntArray(MESSAGE_COUNT)
 
+    // =========================================================================
+    // 1. VANILLA KOTLIN (The "Vibe Coder" Implementation)
+    // =========================================================================
     data class VanillaOrder(val ref: Long, var shares: Int, val price: Int)
     private val vanillaBook = HashMap<Long, VanillaOrder>(2_000_000)
 
+    // =========================================================================
+    // 2. AUTUMN CIRCUIT API  (Hardware FSM Paradigm)
+    // =========================================================================
     @LongLived
     private val capacity = 2_097_152
 
@@ -50,8 +54,16 @@ open class ItchOrderBookBenchmark {
 
     private var autumnCursor = 0
     private lateinit var motherboard: AutumnMotherboard
+    
+    // FSM States mimicking an FPGA state machine boundary
+    private val STATE_IDLE = 0
+    private val STATE_ADD_ROUTE = 1
+    private val STATE_EXECUTE_ROUTE = 2
+    private val STATE_CANCEL_ROUTE = 3
+    
+    private var currentState = STATE_IDLE
 
-    @Setup
+    @Setup(Level.Trial)
     fun setup() {
         val itchFile = File(System.getProperty("user.home"), "Downloads/01302019.NASDAQ_ITCH50")
         if (itchFile.exists()) {
@@ -61,6 +73,7 @@ open class ItchOrderBookBenchmark {
             }
         }
 
+        // Generate synthetic load
         for (i in 0 until MESSAGE_COUNT) {
             opTypes[i] = when (i % 10) {
                 in 0..5 -> 1.toByte() 
@@ -113,11 +126,20 @@ open class ItchOrderBookBenchmark {
             val ref = refs[i]
             val s = shares[i]
             
+            // FSM: Decode Step
+            currentState = when (opTypes[i].toInt()) {
+                1 -> STATE_ADD_ROUTE
+                2 -> STATE_EXECUTE_ROUTE
+                3 -> STATE_CANCEL_ROUTE
+                else -> STATE_IDLE
+            }
+            
             var hash = (ref xor (ref ushr 16) * -7046029254386353131L).toInt()
             var objIdx = hash and (capacity - 1)
 
-            when (opTypes[i].toInt()) {
-                1 -> {
+            // FSM: Execution Step
+            when (currentState) {
+                STATE_ADD_ROUTE -> {
                     val slot = autumnCursor++
                     autumnRefs[slot] = ref
                     autumnShares[slot] = s
@@ -129,7 +151,7 @@ open class ItchOrderBookBenchmark {
                     hashKeys[objIdx] = ref
                     hashValues[objIdx] = slot
                 }
-                2 -> {
+                STATE_EXECUTE_ROUTE -> {
                     while (hashValues[objIdx] != -1) {
                         if (hashKeys[objIdx] == ref) {
                             val slot = hashValues[objIdx]
@@ -140,7 +162,7 @@ open class ItchOrderBookBenchmark {
                         objIdx = (objIdx + 1) and (capacity - 1)
                     }
                 }
-                3 -> {
+                STATE_CANCEL_ROUTE -> {
                     while (hashValues[objIdx] != -1) {
                         if (hashKeys[objIdx] == ref) {
                             hashValues[objIdx] = -1
@@ -150,7 +172,12 @@ open class ItchOrderBookBenchmark {
                     }
                 }
             }
+            
+            // FSM: Return to Idle / Wait state
+            currentState = STATE_IDLE
         }
         
+        // Final clock tick notifying subscribers of state mutation
+        motherboard.stateEngine.incrementEpoch(0)
     }
 }

@@ -3,9 +3,7 @@
   <component name="CompilerConfiguration">
     <bytecodeTargetLevel target="25">
       <module name="autumn.autumn-gradle-plugin.main" target="23" />
-      <module name="autumn.autumn-gradle-plugin.main~1" target="23" />
       <module name="autumn.autumn-gradle-plugin.test" target="23" />
-      <module name="autumn.autumn-gradle-plugin.test~1" target="23" />
     </bytecodeTargetLevel>
   </component>
 </project>

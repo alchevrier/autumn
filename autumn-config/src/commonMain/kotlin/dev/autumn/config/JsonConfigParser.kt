@@ -1,5 +1,14 @@
 package dev.autumn.config
 
+/**
+ * A highly specialized, zero-allocation JSON parser specifically designed to parse 
+ * standard Autumn configuration matrices. 
+ * 
+ * Note: This is NOT a generic JSON parser. It is intentionally hardcoded to seek out 
+ * predefined structural schemas (such as `resources`, `type`, `path`, `action`) 
+ * directly from the byte stream. It skips unmodified tokens entirely, bypassing 
+ * virtual node trees, Maps, and object deserializations.
+ */
 class JsonConfigParser : ConfigParser {
 
     companion object {

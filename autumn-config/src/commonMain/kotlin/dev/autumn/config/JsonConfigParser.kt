@@ -73,34 +73,11 @@ class JsonConfigParser : ConfigParser {
                     } else {
                         // It's a primitive value
                         if (insideResources && depth == resourcesDepth + 1) {
-                            if (matchesExact(bytes, keyStart, keyLen, TYPE_KEY) && i < len && bytes[i] == '"'.code.toByte()) {
-                                i++
-                                val valStart = i
-                                while (i < len && bytes[i] != '"'.code.toByte()) {
-                                    if (bytes[i] == '\\'.code.toByte()) i += 2 else i++
-                                }
-                                currentTypeId = registry.register(valStart, i - valStart)
-                                i++
-                            } else if (matchesExact(bytes, keyStart, keyLen, PATH_KEY) && i < len && bytes[i] == '"'.code.toByte()) {
-                                i++
-                                val valStart = i
-                                while (i < len && bytes[i] != '"'.code.toByte()) {
-                                    if (bytes[i] == '\\'.code.toByte()) i += 2 else i++
-                                }
-                                currentPathId = registry.register(valStart, i - valStart)
-                                i++
-                            } else if (matchesExact(bytes, keyStart, keyLen, ACTION_KEY) && i < len && bytes[i] == '"'.code.toByte()) {
-                                i++
-                                val valStart = i
-                                while (i < len && bytes[i] != '"'.code.toByte()) {
-                                    if (bytes[i] == '\\'.code.toByte()) i += 2 else i++
-                                }
-                                currentActionId = registry.register(valStart, i - valStart)
-                                i++
-                            } else {
-                                // Skip unknown value
-                                i = skipValue(bytes, i)
-                            }
+                            i = discoverInsideResource(bytes, keyStart, keyLen, i, len, registry,
+                                onType = { currentTypeId = it },
+                                onPath = { currentPathId = it },
+                                onAction = { currentActionId = it }
+                            )
                         } else {
                             // Skip value entirely since we don't care
                             i = skipValue(bytes, i)
@@ -110,6 +87,36 @@ class JsonConfigParser : ConfigParser {
                 else -> { i++ }
             }
         }
+    }
+
+    private inline fun discoverInsideResource(
+        bytes: ByteArray, 
+        keyStart: Int, 
+        keyLen: Int, 
+        startIndex: Int, 
+        len: Int, 
+        registry: StringRegistry,
+        onType: (Int) -> Unit,
+        onPath: (Int) -> Unit,
+        onAction: (Int) -> Unit
+    ): Int {
+        var i = startIndex
+        if (i < len && bytes[i] == '"'.code.toByte()) {
+            i++
+            val valStart = i
+            while (i < len && bytes[i] != '"'.code.toByte()) {
+                if (bytes[i] == '\\'.code.toByte()) i += 2 else i++
+            }
+            val id = registry.register(valStart, i - valStart)
+            i++
+            
+            if (matchesExact(bytes, keyStart, keyLen, TYPE_KEY)) onType(id)
+            else if (matchesExact(bytes, keyStart, keyLen, PATH_KEY)) onPath(id)
+            else if (matchesExact(bytes, keyStart, keyLen, ACTION_KEY)) onAction(id)
+        } else {
+            i = skipValue(bytes, startIndex)
+        }
+        return i
     }
 
     private fun matchesExact(bytes: ByteArray, start: Int, length: Int, target: ByteArray): Boolean {

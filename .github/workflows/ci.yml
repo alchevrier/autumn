@@ -46,16 +46,23 @@ jobs:
       run: chmod +x gradlew
     - name: Publish Compiler Plugin to Maven Local
       run: ./gradlew :autumn-compiler-plugin:publishToMavenLocal
-    - name: Prepare Cryptographic Key
+    - name: Prepare Cryptographic Key and Trim Credentials
+      env:
+        RAW_USER: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+        RAW_PASS: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
       run: |
         EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
         echo "ORG_GRADLE_PROJECT_signingKey<<$EOF" >> "$GITHUB_ENV"
         echo "${{ secrets.SIGNING_KEY_BASE64 }}" | base64 -d >> "$GITHUB_ENV"
         echo "" >> "$GITHUB_ENV"
         echo "$EOF" >> "$GITHUB_ENV"
+        
+        # Safely trim whitespaces that are commonly copied from the Sonatype UI
+        CLEAN_USER=$(printf "%s" "$RAW_USER" | tr -d '[:space:]')
+        CLEAN_PASS=$(printf "%s" "$RAW_PASS" | tr -d '[:space:]')
+        echo "ORG_GRADLE_PROJECT_mavenCentralUsername=$CLEAN_USER" >> "$GITHUB_ENV"
+        echo "ORG_GRADLE_PROJECT_mavenCentralPassword=$CLEAN_PASS" >> "$GITHUB_ENV"
     - name: Publish to Sonatype Maven Central
       run: ./gradlew publishAndReleaseToMavenCentral
       env:
-        ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
-        ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
         ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.SIGNING_PASSWORD }}

@@ -19,6 +19,7 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/autumn-benchmarks" />
             <option value="$PROJECT_DIR$/autumn-buckets" />
             <option value="$PROJECT_DIR$/autumn-compiler-plugin" />
             <option value="$PROJECT_DIR$/autumn-config" />

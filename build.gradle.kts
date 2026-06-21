@@ -12,9 +12,12 @@ allprojects {
 
 subprojects {
     apply(plugin = "org.jetbrains.kotlinx.kover")
-    apply(plugin = "com.vanniktech.maven.publish")
+    if (project.name != "autumn-benchmarks") {
+        apply(plugin = "com.vanniktech.maven.publish")
+    }
 
-    configure<com.vanniktech.maven.publish.MavenPublishBaseExtension> {
+    plugins.withId("com.vanniktech.maven.publish") {
+        configure<com.vanniktech.maven.publish.MavenPublishBaseExtension> {
         publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL)
         if (project.hasProperty("signingInMemoryKey") || project.hasProperty("signingSecretKeyFile") || System.getenv("ORG_GRADLE_PROJECT_signingInMemoryKey") != null) {
             signAllPublications()
@@ -46,6 +49,8 @@ subprojects {
                 url.set("https://github.com/alchevrier/autumn/")
             }
         }
+    }
+
     }
 
     // Workaround for Kover + Gradle 9 temporary directory race conditions

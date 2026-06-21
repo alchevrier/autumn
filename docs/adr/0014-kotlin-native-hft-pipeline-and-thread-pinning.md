@@ -37,6 +37,7 @@ To facilitate real HFT feed handler architectures natively:
    - **Pipeline Topography Maps:** Graphically rendering the event-driven data flow (e.g., `@NetworkChannel` ingress ➔ Pinned Core 2 Decoder ➔ `@RegisterChannel` queue ➔ Pinned Core 3 Engine ➔ `@ColdChannel` egress).
    - **Cache Spillage Overlays:** Visually red-lining data structures on the graph that mathematically breach their assigned `@ThreadCacheBudget` physical byte capacity before compilation.
    - **Execution Port Heatmaps (`llvm-mca`):** Piping the parsed AST's LLVM IR directly into `llvm-mca` in the background to inject heatmaps onto the event pipeline, proving out CPU Load/Store instruction bottlenecks dynamically.
+   - **Static Timing Analysis (End-to-End Cycle Estimation):** Borrowing directly from FPGA design suites (like Xilinx Vivado), the plugin synthesizes the critical path. By summing the `llvm-mca` cycle latencies across the connected nodes (from `@NetworkChannel` ingress through the FSM execution states to egress), the IDE provides a real-time, compile-time mathematical estimate of total pipeline latency (e.g., *"Estimated Tick-to-Trade: 420 HW Cycles [~120ns]"*).
 
 ## Consequences
 - **Positive:** We achieve C++/Rust-grade deterministic tail-latencies (`p99.99` in microseconds) combined with the developer-friendly syntax and memory safety of Kotlin.

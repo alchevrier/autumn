@@ -60,6 +60,9 @@ jobs:
         # Safely trim whitespaces that are commonly copied from the Sonatype UI
         CLEAN_USER=$(printf "%s" "$RAW_USER" | tr -d '[:space:]')
         CLEAN_PASS=$(printf "%s" "$RAW_PASS" | tr -d '[:space:]')
+        echo "Token Username Length: ${#CLEAN_USER}"
+        echo "Token Password Length: ${#CLEAN_PASS}"
+        if [ -z "$CLEAN_USER" ]; then echo "::error::MAVEN_CENTRAL_USERNAME is empty! Please check Github Secrets."; exit 1; fi
         echo "ORG_GRADLE_PROJECT_mavenCentralUsername=$CLEAN_USER" >> "$GITHUB_ENV"
         echo "ORG_GRADLE_PROJECT_mavenCentralPassword=$CLEAN_PASS" >> "$GITHUB_ENV"
     - name: Publish to Sonatype Maven Central

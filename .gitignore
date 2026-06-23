@@ -1,6 +1,17 @@
-.gradle/
+# Build files
 build/
-*/build/
-local.properties
+.gradle/
+buildSrc/build/
+
+# Kotlin cache and logs
+.kotlin/
+*.log
+
+# Throwaway script pattern 
+test-*.kt
+test-*.sh
+test-*.jar
+
+# IDE files
+.idea/
 *.iml
-.DS_Store

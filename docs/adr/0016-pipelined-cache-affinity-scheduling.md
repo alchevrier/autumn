@@ -45,6 +45,20 @@ Instead, it:
 
 All operations targeting Cache Line 10 execute together, followed by Cache Line 11. The hardware prefetcher never stalls.
 
+### The High-Level Synthesis (HLS) Mental Model
+
+This architecture can be best understood as **Software High-Level Synthesis (HLS) for commodity CPUs**. 
+
+When programming an FPGA using tools like Xilinx Vivado HLS, developers write C++ but use pragmas to dictate actual spatial hardware layout:
+*   `#pragma HLS array_partition` splits arrays into physical BRAM blocks for parallel access.
+*   `#pragma HLS pipeline II=1` structures the logic gates to accept a new input every clock cycle without stalling.
+
+Autumn brings this exact paradigm to standard x86/ARM processors:
+*   **Array Partitioning:** `@Pipelined` acts as the partition pragma, structurally splitting an interface into physical Structure of Arrays (SoA) byte arrays that natively map to CPU vector registers and SIMD lanes.
+*   **Pipelining (II=1):** The Cache-Affinity Scheduler organizes the function calls so they glide perfectly along the physical L1 cache lines, ensuring the CPU execution ports never stall waiting for main memory.
+
+The core philosophy is identical: the developer writes the mathematical/domain logic, and the compiler/synthesizer translates it into a spatial, hardware-sympathetic physical layout.
+
 ### Comparison: OOP vs. Pipelined
 
 **1. Less Optimized (Standard OOP / Standard Scheduler):**

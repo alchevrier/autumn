@@ -11,6 +11,7 @@ object AllocationExclusions {
         
         return fqName.endsWith("Exception") || 
                fqName.endsWith("Error") ||
+               fqName.endsWith("Flyweight") || // Value classes do not heap allocate!
                fqName.startsWith("java.lang.") ||
                fqName == "kotlin.String"
     }

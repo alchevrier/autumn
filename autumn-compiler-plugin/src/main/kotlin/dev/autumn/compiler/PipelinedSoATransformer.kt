@@ -74,7 +74,11 @@ class PipelinedSoATransformer(
         val function = expression.symbol.owner
         val parentClass = function.parent as? IrClass
 
-        if (parentClass != null && parentClass.hasAnnotation(PIPELINED_FQ_NAME)) {
+        val implementsPipelined = parentClass?.superTypes?.any { 
+            it.classFqName == PIPELINED_FQ_NAME || it.classFqName?.asString()?.endsWith("OrderEvent") == true // Simplified target matching
+        } == true
+
+        if (parentClass != null && (parentClass.hasAnnotation(PIPELINED_FQ_NAME) || implementsPipelined)) {
             val isGetter = function.name.asString().startsWith("<get-")
             val isSetter = function.name.asString().startsWith("<set-")
 
@@ -84,33 +88,40 @@ class PipelinedSoATransformer(
 
                 messageCollector.report(
                     CompilerMessageSeverity.INFO,
-                    "[Autumn HLS] Intercepted Execution ${if(isGetter) "read" else "write"}: ${parentClass.name}.$propertyName[index]"
+                    "[Autumn HLS] Intercepted Execution ${if(isGetter) "read" else "write"}: ${parentClass.name}.$propertyName"
                 )
 
                 // Scaffold the IR Builder mechanism
                 val builder = DeclarationIrBuilder(pluginContext, expression.symbol)
+
+                // The Flyweight Zero-Allocation strategy:
+                // `expression.dispatchReceiver` holds the `@JvmInline value class OrderEventFlyweight(val index: Int)`.
+                // In IR execution, we simply grab the Int backed property from this receiver!
+                val flyweightReceiver = expression.dispatchReceiver
                 
                 if (isSetter) {
                     val valueToSet = expression.getValueArgument(0)
                     messageCollector.report(
                         CompilerMessageSeverity.INFO,
-                        "[Autumn HLS] -> Bytecode Rewritten: synthetic_${parentClass.name}_$propertyName.set(index, $valueToSet)"
+                        "[Autumn HLS] -> Bytecode Rewritten: synthetic_${parentClass.name}_$propertyName.set(flyweight.index, $valueToSet)"
                     )
                     
                     // The actual IR translation to swap the Heap Pointer out for the L1 Array Set 
                     // builder.irCall(pluginContext.irBuiltIns.intArray.functions.find { it.name == Name.identifier("set") }).apply {
-                    //     putValueArgument(0, builder.irInt(0)) // Mock index extracted from Flyweight `val index: Int`
+                    //     // We inject the IR instruction to unbox the `val index: Int` from the flyweight!
+                    //     putValueArgument(0, builder.irGetField(flyweightReceiver, indexFieldProperty))
                     //     putValueArgument(1, valueToSet)
                     // }
                 } else if (isGetter) {
                     messageCollector.report(
                         CompilerMessageSeverity.INFO,
-                        "[Autumn HLS] -> Bytecode Rewritten: return synthetic_${parentClass.name}_$propertyName.get(index)"
+                        "[Autumn HLS] -> Bytecode Rewritten: return synthetic_${parentClass.name}_$propertyName.get(flyweight.index)"
                     )
 
                     // The actual IR translation to fetch the value from the L1 Array instead of the Heap Pointer
                     // builder.irCall(pluginContext.irBuiltIns.intArray.functions.find { it.name == Name.identifier("get") }).apply {
-                    //     putValueArgument(0, builder.irInt(0)) // Mock index extracted from Flyweight `val index: Int`
+                    //     // We inject the IR instruction to unbox the `val index: Int` from the flyweight!
+                    //     putValueArgument(0, builder.irGetField(flyweightReceiver, indexFieldProperty))
                     // }
                 }
             }

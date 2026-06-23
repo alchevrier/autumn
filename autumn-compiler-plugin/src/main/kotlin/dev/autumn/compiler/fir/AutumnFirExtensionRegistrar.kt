@@ -32,5 +32,6 @@ class AutumnCheckersExtension(session: FirSession) : FirAdditionalCheckersExtens
 class AutumnFirExtensionRegistrar : FirExtensionRegistrar() {
     override fun ExtensionRegistrarContext.configurePlugin() {
         +::AutumnCheckersExtension
+        +::FlyweightDeclarationGenerator
     }
 }

@@ -59,6 +59,16 @@ Autumn brings this exact paradigm to standard x86/ARM processors:
 
 The core philosophy is identical: the developer writes the mathematical/domain logic, and the compiler/synthesizer translates it into a spatial, hardware-sympathetic physical layout.
 
+### Synergy with Thread Pinning and Compile-Time Enforcements
+
+This architecture ties back directly to the concepts introduced in [ADR 0014](0014-kotlin-native-hft-pipeline-and-thread-pinning.md). The `@Pipelined` structural generation and Cache-Affinity Scheduler operate directly in tandem with `@ThreadCacheBudget` annotations. 
+
+Because the Autumn K2 compiler plugin is generating the physical byte arrays (the SoA bindings), the compiler knows exactly how many bytes are required per interface instantiation. 
+
+If the calculated size of the SoA pipeline matrix—combined with the core's other responsibilities—exceeds the L1 cache budget specified for that pinned core (e.g., `32KB`), **the compiler will fail the build.** 
+
+The developer is instantly alerted via IDE tooling that their domain model is too large to achieve zero-stall HLS execution, forcing them to refine their data architecture or distribute the pipeline across multiple cores *before* it ever reaches runtime profiling.
+
 ### Comparison: OOP vs. Pipelined
 
 **1. Less Optimized (Standard OOP / Standard Scheduler):**

@@ -15,6 +15,8 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.ir.builders.irBlock
 import org.jetbrains.kotlin.ir.builders.irInt
+import org.jetbrains.kotlin.ir.builders.irCall
+import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.functions
 
 class PipelinedSoATransformer(
@@ -110,10 +112,18 @@ class PipelinedSoATransformer(
                     
                     // The actual IR translation to swap the Heap Pointer out for the L1 Array Set 
                     val intArraySet = pluginContext.irBuiltIns.intArray.owner.functions.find { it.name.asString() == "set" }
+                    val intArrayConstructor = pluginContext.irBuiltIns.intArray.owner.constructors.first()
+
                     if (intArraySet != null && valueToSet != null) {
-                        return builder.irBlock {
-                            // In a full implementation, the array receiver is resolved from the channel scope.
-                            // Here we return a pure IR replacement, completely erasing the original object setter!
+                        return builder.irCall(intArraySet.symbol).apply {
+                            // In a full implementation, `dispatchReceiver` is assigned to the `irGetField` grabbing the synthetic Arrays
+                            // For this structural phase, we inject a dummy dispatch receiver so AST validation doesn't crash on null.
+                            dispatchReceiver = builder.irCall(intArrayConstructor.symbol).apply {
+                                putValueArgument(0, builder.irInt(0))
+                            }
+                            // We inject the method call unboxing the flyweight index exactly
+                            putValueArgument(0, builder.irInt(0)) // Index mocked
+                            putValueArgument(1, valueToSet)
                         }
                     }
                 } else if (isGetter) {
@@ -123,7 +133,18 @@ class PipelinedSoATransformer(
                     )
 
                     // The actual IR translation to fetch the value from the L1 Array instead of the Heap Pointer
-                    return builder.irInt(0) // MOCKED IR GETTER REPLACEMENT (Erase the heap object fetch!)
+                    val intArrayGet = pluginContext.irBuiltIns.intArray.owner.functions.find { it.name.asString() == "get" }
+                    val intArrayConstructor = pluginContext.irBuiltIns.intArray.owner.constructors.first()
+
+                    if (intArrayGet != null) {
+                        return builder.irCall(intArrayGet.symbol).apply {
+                            dispatchReceiver = builder.irCall(intArrayConstructor.symbol).apply {
+                                putValueArgument(0, builder.irInt(0))
+                            }
+                            putValueArgument(0, builder.irInt(0)) // Index mocked
+                        }
+                    }
+                    return builder.irInt(0) // Fallback MOCKED IR GETTER REPLACEMENT 
                 }
             }
         }

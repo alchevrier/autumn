@@ -37,16 +37,19 @@ class HighFrequencyTradingNode {
     // val impossibleQueue: Any? = null
 
     @HotPath
-    @ThreadCacheBudget(32768) // 32KB L1d restriction
-    fun processMarketData() {
+    // @ThreadCacheBudget(500) // DELIBERATE ERROR: Budget 500 < Required 832
+    @ThreadCacheBudget(32768)
+    fun processMarketData(order: OrderEvent) {
         // Here, the scheduler routes incoming @NetworkChannel data 
         // into the @Pipelined OrderEvent, restricted by the @ThreadCacheBudget.
         
-        // ✅ ALLOWED: Accessing high-speed channels in the hot path
-        val tick = coreToCoreQueue
-        
-        // ❌ ERROR: Accessing ColdChannel inside HotPath
-        // UNCOMMENT TO TRIGGER COMPILER ERROR ([Autumn] Illegal @ColdChannel usage inside a @HotPath...)
-        // val forbiddenRead = auditLogQueue
+        // 1. SoA Write (Setter Interception)
+        order.quantity = 100
+        order.side = 1
+
+        // 2. SoA Read (Getter Interception)
+        if (order.quantity > 50) {
+            val tick = coreToCoreQueue
+        }
     }
 }

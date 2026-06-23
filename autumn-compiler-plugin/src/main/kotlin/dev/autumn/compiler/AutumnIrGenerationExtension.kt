@@ -17,5 +17,9 @@ class AutumnIrGenerationExtension(
         // 2. Validate strict zero-allocation boundaries
         val visitor = AllocationVisitor(pluginContext, messageCollector)
         moduleFragment.accept(visitor, null)
+
+        // 3. Lower @Pipelined data structures into Structure of Arrays (SoA) layouts
+        val soaTransformer = PipelinedSoATransformer(pluginContext, messageCollector)
+        moduleFragment.transform(soaTransformer, null)
     }
 }

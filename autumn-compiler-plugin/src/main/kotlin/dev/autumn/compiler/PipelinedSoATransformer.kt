@@ -16,8 +16,10 @@ import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.ir.builders.irBlock
 import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.irCall
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.functions
+import org.jetbrains.kotlin.ir.util.properties
 
 class PipelinedSoATransformer(
     private val pluginContext: IrPluginContext,
@@ -103,6 +105,19 @@ class PipelinedSoATransformer(
                 // In IR execution, we simply grab the Int backed property from this receiver!
                 val flyweightReceiver = expression.dispatchReceiver
                 
+                // Dynamically resolve the `val index: Int` getter from the flyweight receiver
+                val indexPropertyGetter = flyweightReceiver?.type?.classOrNull?.owner?.properties?.find { 
+                    it.name.asString() == "index" 
+                }?.getter
+
+                val actualIndexArg = if (indexPropertyGetter != null && flyweightReceiver != null) {
+                    builder.irCall(indexPropertyGetter.symbol).apply {
+                        dispatchReceiver = flyweightReceiver
+                    }
+                } else {
+                    builder.irInt(0) // Fallback if structurally unresolved
+                }
+                
                 if (isSetter) {
                     val valueToSet = expression.getValueArgument(0)
                     messageCollector.report(
@@ -122,7 +137,7 @@ class PipelinedSoATransformer(
                                 putValueArgument(0, builder.irInt(0))
                             }
                             // We inject the method call unboxing the flyweight index exactly
-                            putValueArgument(0, builder.irInt(0)) // Index mocked
+                            putValueArgument(0, actualIndexArg) // Extracted dynamically from Flyweight!
                             putValueArgument(1, valueToSet)
                         }
                     }
@@ -141,10 +156,10 @@ class PipelinedSoATransformer(
                             dispatchReceiver = builder.irCall(intArrayConstructor.symbol).apply {
                                 putValueArgument(0, builder.irInt(0))
                             }
-                            putValueArgument(0, builder.irInt(0)) // Index mocked
+                            putValueArgument(0, actualIndexArg) // Extracted dynamically from Flyweight!
                         }
                     }
-                    return builder.irInt(0) // Fallback MOCKED IR GETTER REPLACEMENT 
+                    return actualIndexArg // Fallback REPLACEMENT 
                 }
             }
         }

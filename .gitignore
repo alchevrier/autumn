@@ -15,3 +15,5 @@ test-*.jar
 # IDE files
 .idea/
 *.iml
+autumn-core/src/nativeInterop/cinterop/*.o
+autumn-core/src/nativeInterop/cinterop/*.a

@@ -230,12 +230,76 @@ class PipelinedSoATransformer(
             
             val className = parentClass?.name?.asString() ?: return super.visitCall(expression)
             
-            val offsetMap = propertyLocalSoAByteOffsets[className] ?: return super.visitCall(expression)
+            // The class might be a Flyweight (e.g. OrderEventFlyweight), so check if its interface is in the map
+            val targetClassName = propertyLocalSoAByteOffsets.keys.find { it == className || className.startsWith(it) } ?: return super.visitCall(expression)
+            
+            val offsetMap = propertyLocalSoAByteOffsets[targetClassName] ?: return super.visitCall(expression)
             val propertyBaseOffset = offsetMap[propertyName]
             
             if (propertyBaseOffset != null && parentClass.isValue) {
-                // Just pass through K2 natively for now without full layout pointer math implementation
-                return super.visitCall(expression)
+                val byteSizeMap = propertyByteSizes[targetClassName] ?: return super.visitCall(expression)
+                val propertyByteSize = byteSizeMap[propertyName] ?: return super.visitCall(expression)
+
+                val typeSuffix = when (propertyByteSize) {
+                    8 -> "Long"
+                    4 -> "Int"
+                    2 -> "Short"
+                    1 -> "Byte"
+                    else -> return super.visitCall(expression)
+                }
+
+                val indexProperty = parentClass.properties.find { it.name.asString() == "index" } ?: return super.visitCall(expression)
+                val indexGetter = indexProperty.getter ?: return super.visitCall(expression)
+                
+                val memoryBankClass = pluginContext.referenceClass(ClassId.topLevel(FqName("dev.autumn.memory.AutumnMemoryBank")))?.owner ?: return super.visitCall(expression)
+                
+                val intClass = pluginContext.irBuiltIns.intClass.owner
+                val intTimes = intClass.functions.find { it.name.asString() == "times" && it.valueParameters.firstOrNull()?.type == pluginContext.irBuiltIns.intType }?.symbol ?: return super.visitCall(expression)
+                val intPlus = intClass.functions.find { it.name.asString() == "plus" && it.valueParameters.firstOrNull()?.type == pluginContext.irBuiltIns.intType }?.symbol ?: return super.visitCall(expression)
+                
+                val builder = DeclarationIrBuilder(pluginContext, expression.symbol)
+                
+                val idxExpr = builder.irCall(indexGetter.symbol).apply {
+                    dispatchReceiver = expression.dispatchReceiver
+                }
+                
+                val idxTimesSize = builder.irCall(intTimes).apply {
+                    dispatchReceiver = idxExpr
+                    putValueArgument(0, builder.irInt(propertyByteSize)) 
+                }
+                
+                val addressExpr = builder.irCall(intPlus).apply {
+                    dispatchReceiver = builder.irInt(propertyBaseOffset)
+                    putValueArgument(0, idxTimesSize)
+                }
+
+                if (isGetter) {
+                    val getterFunc = memoryBankClass.functions.find { it.name.asString() == "get$typeSuffix" } ?: return super.visitCall(expression)
+                    
+                    messageCollector.report(
+                        CompilerMessageSeverity.INFO,
+                        "[Autumn HLS] Rewrote Getter: ${className}.${propertyName} -> AutumnMemoryBank.get$typeSuffix($propertyBaseOffset + (index * $propertyByteSize))"
+                    )
+                    
+                    return builder.irCall(getterFunc.symbol).apply {
+                        dispatchReceiver = builder.irGetObject(memoryBankClass.symbol)
+                        putValueArgument(0, addressExpr)
+                    }
+                } else if (isSetter) {
+                    val setterFunc = memoryBankClass.functions.find { it.name.asString() == "set$typeSuffix" } ?: return super.visitCall(expression)
+                    val valueToSet = expression.getValueArgument(0) ?: return super.visitCall(expression)
+                    
+                    messageCollector.report(
+                        CompilerMessageSeverity.INFO,
+                        "[Autumn HLS] Rewrote Setter: ${className}.${propertyName} = value -> AutumnMemoryBank.set$typeSuffix($propertyBaseOffset + (index * $propertyByteSize), value)"
+                    )
+                    
+                    return builder.irCall(setterFunc.symbol).apply {
+                        dispatchReceiver = builder.irGetObject(memoryBankClass.symbol)
+                        putValueArgument(0, addressExpr)
+                        putValueArgument(1, valueToSet)
+                    }
+                }
             }
         }
         return super.visitCall(expression)

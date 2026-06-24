@@ -117,6 +117,10 @@ Architectural decisions live in [`docs/adr/`](docs/adr) and capture the initial 
 - ADR-0013 — The Circuit Skeleton as a Commodity Backend Consumer
 - ADR-0014 — Kotlin Native HFT Pipeline and Thread Pinning
 - ADR-0015 — Kotlin Multiplatform Unification for Universal Circuit Programming
+- ADR-0016 — Pipelined Cache Affinity Scheduling
+- ADR-0017 — Flyweight Zero Allocation Model
+- ADR-0018 — AF_XDP Zero Copy Ingress
+- ADR-0019 — K2 Compiler IR Injection for Global Struct Pooling
 
 ## Integration example (Jetpack Compose)
 

@@ -43,16 +43,21 @@ class PipelinedSoATransformer(
                 val propertyName = property.name.asString()
                 val propertyType = property.getter?.returnType?.classFqName?.shortName()?.asString() ?: "Unknown"
 
+                val propertyOffset = totalStructBytes
+                var byteSize = 0
+
                 val arrayType = when(propertyType) {
-                    "Int" -> { totalStructBytes += 4; "IntArray" }
-                    "Long" -> { totalStructBytes += 8; "LongArray" }
-                    "Byte" -> { totalStructBytes += 1; "ByteArray" }
-                    "Short" -> { totalStructBytes += 2; "ShortArray" }
-                    "Float" -> { totalStructBytes += 4; "FloatArray" }
-                    "Double" -> { totalStructBytes += 8; "DoubleArray" }
-                    "Boolean" -> { totalStructBytes += 1; "BooleanArray" }
+                    "Int" -> { byteSize = 4; "IntArray" }
+                    "Long" -> { byteSize = 8; "LongArray" }
+                    "Byte" -> { byteSize = 1; "ByteArray" }
+                    "Short" -> { byteSize = 2; "ShortArray" }
+                    "Float" -> { byteSize = 4; "FloatArray" }
+                    "Double" -> { byteSize = 8; "DoubleArray" }
+                    "Boolean" -> { byteSize = 1; "BooleanArray" }
                     else -> "UNSUPPORTED_TYPE"
                 }
+                
+                totalStructBytes += byteSize
 
                 if (arrayType == "UNSUPPORTED_TYPE") {
                     messageCollector.report(
@@ -62,7 +67,7 @@ class PipelinedSoATransformer(
                 } else {
                     messageCollector.report(
                         CompilerMessageSeverity.INFO,
-                        "[Autumn HLS] -> Generating SoA Backing Layout: val synthetic_${declaration.name}_$propertyName = $arrayType($capacity)"
+                        "[Autumn HLS] -> Generating Memory Layout for '$propertyName': SoA Array = $arrayType($capacity), AoS Network UMEM Offset = +$propertyOffset bytes"
                     )
                 }
             }

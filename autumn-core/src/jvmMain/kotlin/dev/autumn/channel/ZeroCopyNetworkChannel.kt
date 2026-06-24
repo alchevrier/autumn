@@ -20,14 +20,17 @@ actual class ZeroCopyNetworkChannel actual constructor(
         const val FRAME_SIZE = 2048
         const val NUM_FRAMES = 4096
     }
-
-    private val datagramChannel: DatagramChannel = DatagramChannel.open(StandardProtocolFamily.INET)
     
     // DirectByteBuffer completely bypasses the JVM Garbage Collector.
     // This acts exactly like our C-Interop UMEM on Linux.
-    val umem: ByteBuffer = ByteBuffer.allocateDirect(FRAME_SIZE * NUM_FRAMES)
+    @PublishedApi
+    internal val umem: ByteBuffer = ByteBuffer.allocateDirect(FRAME_SIZE * NUM_FRAMES)
     
-    private var writeIndex = 0
+    @PublishedApi
+    internal var writeIndex = 0
+
+    @PublishedApi
+    internal val datagramChannel: DatagramChannel = DatagramChannel.open(StandardProtocolFamily.INET)
 
     init {
         datagramChannel.configureBlocking(false) // Strict Non-Blocking (Polling mode)

@@ -1,3 +1,8 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#include <sched.h>
+#include <pthread.h>
 #include "autumn_xdp.h"
 #include "xdp_compat.h"
 #include <stdlib.h>
@@ -7,11 +12,6 @@
 #include <net/if.h>
 #include <sys/socket.h>
 #include <sys/mman.h>
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-#include <pthread.h>
-#include <sched.h>
 
 #define AUTUMN_FRAME_SIZE 2048
 #define AUTUMN_RING_SIZE 2048
@@ -28,8 +28,8 @@ void autumn_pause(void) {
 
 int autumn_pin_to_core(int core_id) {
     cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(core_id, &cpuset);
+    __CPU_ZERO_S(sizeof(cpu_set_t), &cpuset);
+    __CPU_SET_S(core_id, sizeof(cpu_set_t), &cpuset);
     
     pthread_t current_thread = pthread_self();
     return pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);

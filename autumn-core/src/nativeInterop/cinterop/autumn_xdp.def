@@ -1,4 +1,6 @@
 package = dev.autumn.xdp
 headers = autumn_xdp.h
 compilerOpts = -Isrc/nativeInterop/cinterop
-linkerOpts = -lbpf
+linkerOpts = -L/usr/lib/x86_64-linux-gnu -lbpf
+libraryPaths = src/nativeInterop/cinterop
+staticLibraries = autumn_xdp.a

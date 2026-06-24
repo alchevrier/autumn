@@ -1,10 +1,9 @@
 #ifndef AUTUMN_XDP_H
 #define AUTUMN_XDP_H
 
-#include <linux/if_xdp.h>
+#include "xdp_compat.h"
 #include <sys/mman.h>
 #include <sys/socket.h>
-#include <linux/if_link.h>
 #include <stdint.h>
 #include <stdlib.h>
 

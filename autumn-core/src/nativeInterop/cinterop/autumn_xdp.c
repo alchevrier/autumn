@@ -1,4 +1,5 @@
 #include "autumn_xdp.h"
+#include "xdp_compat.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -6,8 +7,6 @@
 #include <net/if.h>
 #include <sys/socket.h>
 #include <sys/mman.h>
-#include <linux/if_xdp.h>
-#include <linux/if_ether.h>
 
 #define AUTUMN_FRAME_SIZE 2048
 #define AUTUMN_RING_SIZE 2048

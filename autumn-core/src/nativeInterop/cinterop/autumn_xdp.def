@@ -1,0 +1,4 @@
+package = dev.autumn.xdp
+headers = autumn_xdp.h
+compilerOpts = -Isrc/nativeInterop/cinterop
+linkerOpts = -lbpf

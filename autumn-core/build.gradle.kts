@@ -33,3 +33,19 @@ kotlin {
         }
     }
 }
+tasks.register<Exec>("compileAutumnXdp") {
+    val srcDir = file("src/nativeInterop/cinterop")
+    val cFile = srcDir.resolve("autumn_xdp.c")
+    val oFile = srcDir.resolve("autumn_xdp.o")
+    val aFile = srcDir.resolve("autumn_xdp.a")
+
+    inputs.file(cFile)
+    outputs.file(aFile)
+
+    commandLine("bash", "-c", "gcc -c -fPIC ${cFile.absolutePath} -o ${oFile.absolutePath} && ar rcs ${aFile.absolutePath} ${oFile.absolutePath}")
+}
+
+// Make sure that cinterop waits for the C compilation to finish
+tasks.matching { it.name.startsWith("cinterop") }.configureEach {
+    dependsOn("compileAutumnXdp")
+}

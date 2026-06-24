@@ -1,6 +1,7 @@
 package dev.autumn.compiler.fir
 
 import org.jetbrains.kotlin.diagnostics.error0
+import org.jetbrains.kotlin.diagnostics.error1
 import org.jetbrains.kotlin.diagnostics.error2
 import org.jetbrains.kotlin.diagnostics.rendering.RootDiagnosticRendererFactory
 import org.jetbrains.kotlin.psi.KtElement
@@ -10,7 +11,8 @@ object AutumnErrors {
     val L1_CACHE_BUDGET_EXCEEDED by error2<KtElement, Int, Int>() // Required bytes, Budget bytes
     val COLD_CHANNEL_IN_HOT_PATH by error0<KtElement>()
     val CONFLICTING_CHANNEL_TYPES by error0<KtElement>()
-    
+    val INVALID_REGISTER_CHANNEL_CAPACITY by error1<KtElement, String>()
+
     init {
         RootDiagnosticRendererFactory.registerFactory(AutumnDiagnosticRenderer)
     }

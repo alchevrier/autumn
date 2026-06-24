@@ -18,8 +18,19 @@ class AutumnIrGenerationExtension(
         val visitor = AllocationVisitor(pluginContext, messageCollector)
         moduleFragment.accept(visitor, null)
 
-        // 3. Lower @Pipelined data structures into Structure of Arrays (SoA) layouts
+        val cacheVisitor = ThreadCacheBudgetVisitor(pluginContext, messageCollector)
+        moduleFragment.accept(cacheVisitor, null)
+
+        // 3. Lower @Pipelined data structures into Structure of Arrays (SoA) layouts using Global Pooling
         val soaTransformer = PipelinedSoATransformer(pluginContext, messageCollector)
+        soaTransformer.buildMemoryMap(moduleFragment)
         moduleFragment.transform(soaTransformer, null)
+        
+        // 4. Inject Memory Bank hardware boundary bootstrap automatically into Main
+        val totalBytesToAllocate = soaTransformer.totalAllocatedBytes[0]
+        if (totalBytesToAllocate > 0) {
+            val initializationTransformer = MemoryBankInitializationTransformer(pluginContext, messageCollector, totalBytesToAllocate)
+            moduleFragment.transform(initializationTransformer, null)
+        }
     }
 }

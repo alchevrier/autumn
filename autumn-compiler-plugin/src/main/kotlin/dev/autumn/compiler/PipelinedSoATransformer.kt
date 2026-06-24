@@ -19,75 +19,200 @@ import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.functions
-import org.jetbrains.kotlin.ir.util.properties
+import org.jetbrains.kotlin.ir.builders.declarations.addField
+import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
+import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.ir.types.defaultType
+import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.declarations.IrField
+import org.jetbrains.kotlin.ir.builders.irGetField
+import org.jetbrains.kotlin.ir.builders.irGetObject
+import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.ir.declarations.IrProperty
+import org.jetbrains.kotlin.ir.expressions.IrConst
+import org.jetbrains.kotlin.ir.types.IrSimpleType
+import org.jetbrains.kotlin.ir.types.typeOrNull
+import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
+import org.jetbrains.kotlin.ir.builders.irTemporary
+import org.jetbrains.kotlin.ir.builders.irGet
+import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 
 class PipelinedSoATransformer(
     private val pluginContext: IrPluginContext,
-    private val messageCollector: MessageCollector
+    private val messageCollector: MessageCollector,
+    val totalAllocatedBytes: IntArray = IntArray(1)
 ) : IrElementTransformerVoidWithContext() {
 
     private val PIPELINED_FQ_NAME = FqName("dev.autumn.annotations.Pipelined")
     private val NETWORK_CHANNEL_FQ_NAME = FqName("dev.autumn.annotations.NetworkChannel")
+    private val REGISTER_CHANNEL_FQ_NAME = FqName("dev.autumn.annotations.RegisterChannel")
+    private val COLD_CHANNEL_FQ_NAME = FqName("dev.autumn.annotations.ColdChannel")
 
-    // Compile-time layout mappings
-    // ClassName -> (PropertyName -> Target Byte Offset)
-    private val propertyByteOffsets = mutableMapOf<String, MutableMap<String, Int>>()
+    private val propertyLocalSoAByteOffsets = mutableMapOf<String, MutableMap<String, Int>>()
+    private val propertyByteSizes = mutableMapOf<String, MutableMap<String, Int>>()
+    private val channelIndexOffsets = mutableMapOf<String, Int>()
 
-    override fun visitClassNew(declaration: IrClass): IrStatement {
-        if (declaration.hasAnnotation(PIPELINED_FQ_NAME)) {
-            val capacity = getPipelinedCapacity(declaration)
-            messageCollector.report(
-                CompilerMessageSeverity.INFO,
-                "[Autumn HLS] Discovered @Pipelined interface: ${declaration.name} with capacity $capacity."
-            )
+    fun buildMemoryMap(moduleFragment: IrModuleFragment) {
+        val pipelinedClasses = mutableMapOf<String, IrClass>()
+        val structTotalCapacities = mutableMapOf<String, Int>()
+        
+        moduleFragment.accept(object : IrElementVisitorVoid {
+            override fun visitElement(element: org.jetbrains.kotlin.ir.IrElement) {
+                element.acceptChildren(this, null)
+            }
 
+            override fun visitClass(declaration: IrClass) {
+                if (declaration.hasAnnotation(PIPELINED_FQ_NAME)) {
+                    pipelinedClasses[declaration.name.asString()] = declaration
+                }
+                super.visitClass(declaration)
+            }
+            
+            override fun visitProperty(declaration: IrProperty) {
+                if (declaration.hasAnnotation(REGISTER_CHANNEL_FQ_NAME) || 
+                    declaration.hasAnnotation(NETWORK_CHANNEL_FQ_NAME) || 
+                    declaration.hasAnnotation(COLD_CHANNEL_FQ_NAME)) {
+                    
+                    val isReg = declaration.hasAnnotation(REGISTER_CHANNEL_FQ_NAME)
+                    val isNet = declaration.hasAnnotation(NETWORK_CHANNEL_FQ_NAME)
+                    val isCold = declaration.hasAnnotation(COLD_CHANNEL_FQ_NAME)
+                    
+                    val targetAnnotation = when {
+                        isReg -> REGISTER_CHANNEL_FQ_NAME
+                        isNet -> NETWORK_CHANNEL_FQ_NAME
+                        else -> COLD_CHANNEL_FQ_NAME
+                    }
+                    
+                    val annot = declaration.getAnnotation(targetAnnotation)
+                    val capArgument = if (isNet || isReg) annot?.getValueArgument(0) as? IrConst else null
+                    val channelCapacity = (capArgument?.value as? Int) ?: 1024
+
+                    val simpleType = declaration.backingField?.type as? IrSimpleType
+                    val boundStructClass = simpleType?.arguments?.firstOrNull()?.typeOrNull?.classOrNull?.owner
+
+                    if (boundStructClass != null) {
+                        if (boundStructClass.hasAnnotation(PIPELINED_FQ_NAME)) {
+                            val boundName = boundStructClass.name.asString()
+                            val currentTotal = structTotalCapacities[boundName] ?: 0
+                            
+                            channelIndexOffsets[declaration.name.asString()] = currentTotal
+                            structTotalCapacities[boundName] = currentTotal + channelCapacity
+                            
+                            messageCollector.report(
+                                CompilerMessageSeverity.INFO,
+                                "[Autumn HLS] Assigned Global Index Bounds: Channel '${declaration.name.asString()}' gets indices $currentTotal..${currentTotal + channelCapacity - 1} from Pool $boundName"
+                            )
+                        } else {
+                            messageCollector.report(
+                                CompilerMessageSeverity.WARNING,
+                                "[Debug Channel Map] Struct ${boundStructClass.name} missed @Pipelined match!"
+                            )
+                        }
+                    }
+                }
+                super.visitProperty(declaration)
+            }
+        }, null)
+
+        var currentGlobalPartitionOffset = 0
+        
+        for ((className, totalCapacity) in structTotalCapacities) {
+            val boundStructClass = pipelinedClasses[className] ?: continue
+            
             var totalStructBytes = 0
-            val classOffsets = mutableMapOf<String, Int>()
-
-            // Extract the fields to determine the hardware Memory Layout mappings
-            for (property in declaration.properties) {
+            val localSoAOffsets = mutableMapOf<String, Int>()
+            val byteSizes = mutableMapOf<String, Int>()
+            
+            for (property in boundStructClass.properties.toList()) {
                 val propertyName = property.name.asString()
                 val propertyType = property.getter?.returnType?.classFqName?.shortName()?.asString() ?: "Unknown"
 
-                val propertyOffset = totalStructBytes
-                classOffsets[propertyName] = propertyOffset
-                var byteSize = 0
-
-                val arrayType = when(propertyType) {
-                    "Int" -> { byteSize = 4; "IntArray" }
-                    "Long" -> { byteSize = 8; "LongArray" }
-                    "Byte" -> { byteSize = 1; "ByteArray" }
-                    "Short" -> { byteSize = 2; "ShortArray" }
-                    "Float" -> { byteSize = 4; "FloatArray" }
-                    "Double" -> { byteSize = 8; "DoubleArray" }
-                    "Boolean" -> { byteSize = 1; "BooleanArray" }
-                    else -> "UNSUPPORTED_TYPE"
+                var byteSize = when(propertyType) {
+                    "Int", "Float" -> 4
+                    "Long", "Double" -> 8
+                    "Short" -> 2
+                    "Byte", "Boolean" -> 1
+                    else -> 0
                 }
                 
-                totalStructBytes += byteSize
-
-                if (arrayType == "UNSUPPORTED_TYPE") {
-                    messageCollector.report(
-                        CompilerMessageSeverity.ERROR,
-                        "[Autumn HLS] SoA Generation Failed: @Pipelined property '$propertyName' has unsupported type '$propertyType'. Only primitives are allowed in zero-allocation boundaries."
-                    )
-                } else {
-                    messageCollector.report(
-                        CompilerMessageSeverity.INFO,
-                        "[Autumn HLS] -> Generating Memory Layout for '$propertyName': SoA Array = $arrayType($capacity), AoS Network UMEM Offset = +$propertyOffset bytes"
-                    )
+                if (byteSize > 0) {
+                    localSoAOffsets[propertyName] = currentGlobalPartitionOffset
+                    byteSizes[propertyName] = byteSize
+                    totalStructBytes += byteSize
+                    currentGlobalPartitionOffset += (byteSize * totalCapacity) 
                 }
             }
             
-            propertyByteOffsets[declaration.name.asString()] = classOffsets
+            propertyLocalSoAByteOffsets[className] = localSoAOffsets
+            propertyByteSizes[className] = byteSizes 
 
-            val totalSoABytes = totalStructBytes * capacity
+            var totalSoABytes = totalStructBytes * totalCapacity
+            var alignedSoABytes = totalSoABytes
+            if (alignedSoABytes > 0 && (alignedSoABytes and (alignedSoABytes - 1)) != 0) {
+                var n = alignedSoABytes - 1
+                n = n.or(n.ushr(1))
+                n = n.or(n.ushr(2))
+                n = n.or(n.ushr(4))
+                n = n.or(n.ushr(8))
+                n = n.or(n.ushr(16))
+                alignedSoABytes = n + 1
+            }
+            if (alignedSoABytes < 4096) alignedSoABytes = 4096
+
+            totalAllocatedBytes[0] += alignedSoABytes
+            
             messageCollector.report(
                 CompilerMessageSeverity.INFO,
-                "[Autumn HLS] *** Memory Map Completed *** ${declaration.name} requires $totalSoABytes bytes of contiguous L1 Cache."
+                "[Autumn HLS] Pool '${className}' -> physically maps Total Stacked Capacity $totalCapacity ($totalSoABytes bytes data -> Padded to Hardware Align $alignedSoABytes bytes)"
             )
         }
-        return super.visitClassNew(declaration)
+    }
+
+    override fun visitPropertyNew(declaration: IrProperty): IrStatement {
+        if (declaration.hasAnnotation(REGISTER_CHANNEL_FQ_NAME) || 
+            declaration.hasAnnotation(NETWORK_CHANNEL_FQ_NAME) ||
+            declaration.hasAnnotation(COLD_CHANNEL_FQ_NAME)) {
+
+            val offset = channelIndexOffsets[declaration.name.asString()]
+            val originalInitializer = declaration.backingField?.initializer?.expression
+
+            if (offset != null && originalInitializer != null) {
+                val autumnChannelClass = pluginContext.referenceClass(ClassId.topLevel(FqName("dev.autumn.channel.AutumnChannel")))
+                val spscRingBufferClass = pluginContext.referenceClass(ClassId.topLevel(FqName("dev.autumn.channel.SPSCRingBuffer")))
+                
+                val bufferGetter = autumnChannelClass?.owner?.properties?.find { it.name.asString() == "buffer" }?.getter
+                val globalIndexOffsetSetter = spscRingBufferClass?.owner?.properties?.find { it.name.asString() == "globalIndexOffset" }?.setter
+                
+                if (bufferGetter != null && globalIndexOffsetSetter != null) {
+                    val builder = DeclarationIrBuilder(pluginContext, declaration.symbol)
+                    
+                    declaration.backingField?.initializer?.expression = builder.irBlock(resultType = originalInitializer.type) {
+                        val tempVar = irTemporary(originalInitializer)
+                        
+                        val bufferGetCall = irCall(bufferGetter.symbol).apply {
+                            dispatchReceiver = irGet(tempVar)
+                        }
+                        
+                        val setOffsetCall = irCall(globalIndexOffsetSetter.symbol).apply {
+                            dispatchReceiver = bufferGetCall
+                            putValueArgument(0, irInt(offset))
+                        }
+                        
+                        +setOffsetCall
+                        +irGet(tempVar)
+                    }
+                    
+                    messageCollector.report(
+                        CompilerMessageSeverity.INFO,
+                        "[Autumn HLS] Injected native IR block mapping Channel '${declaration.name.asString()}' buffer offset to $offset"
+                    )
+                }
+            }
+        }
+        return super.visitPropertyNew(declaration)
     }
 
     override fun visitCall(expression: IrCall): org.jetbrains.kotlin.ir.expressions.IrExpression {
@@ -95,107 +220,24 @@ class PipelinedSoATransformer(
         val parentClass = function.parent as? IrClass
 
         val implementsPipelined = parentClass?.superTypes?.any { 
-            it.classFqName == PIPELINED_FQ_NAME || it.classFqName?.asString()?.endsWith("OrderEvent") == true // Simplified target matching
+            it.classFqName == PIPELINED_FQ_NAME || it.classFqName?.asString()?.endsWith("OrderEvent") == true
         } == true
-
-        if (parentClass != null && (parentClass.hasAnnotation(PIPELINED_FQ_NAME) || implementsPipelined)) {
+        
+        if (implementsPipelined) {
             val isGetter = function.name.asString().startsWith("<get-")
             val isSetter = function.name.asString().startsWith("<set-")
-
-            if (isGetter || isSetter) {
-                val propertyName = function.name.asString()
-                    .removePrefix("<get-").removePrefix("<set-").removeSuffix(">")
-
-                messageCollector.report(
-                    CompilerMessageSeverity.INFO,
-                    "[Autumn HLS] Intercepted Execution ${if(isGetter) "read" else "write"}: ${parentClass.name}.$propertyName"
-                )
-
-                // Scaffold the IR Builder mechanism
-                val builder = DeclarationIrBuilder(pluginContext, expression.symbol)
-
-                // The Flyweight Zero-Allocation strategy:
-                // `expression.dispatchReceiver` holds the `@JvmInline value class OrderEventFlyweight(val index: Int)`.
-                // In IR execution, we simply grab the Int backed property from this receiver!
-                val flyweightReceiver = expression.dispatchReceiver
-                
-                // Dynamically resolve the `val index: Int` getter from the flyweight receiver
-                val indexPropertyGetter = flyweightReceiver?.type?.classOrNull?.owner?.properties?.find { 
-                    it.name.asString() == "index" 
-                }?.getter
-
-                val actualIndexArg = if (indexPropertyGetter != null && flyweightReceiver != null) {
-                    builder.irCall(indexPropertyGetter.symbol).apply {
-                        dispatchReceiver = flyweightReceiver
-                    }
-                } else {
-                    builder.irInt(0) // Fallback if structurally unresolved
-                }
-                
-                if (isSetter) {
-                    val valueToSet = expression.getValueArgument(0)
-                    messageCollector.report(
-                        CompilerMessageSeverity.INFO,
-                        "[Autumn HLS] -> Bytecode Rewritten: synthetic_${parentClass.name}_$propertyName.set(flyweight.index, $valueToSet)"
-                    )
-                    
-                    // The actual IR translation to swap the Heap Pointer out for the L1 Array Set 
-                    val intArraySet = pluginContext.irBuiltIns.intArray.owner.functions.find { it.name.asString() == "set" }
-                    val intArrayConstructor = pluginContext.irBuiltIns.intArray.owner.constructors.first()
-
-                    if (intArraySet != null && valueToSet != null) {
-                        return builder.irCall(intArraySet.symbol).apply {
-                            // In a full implementation, `dispatchReceiver` is assigned to the `irGetField` grabbing the synthetic Arrays
-                            // For this structural phase, we inject a dummy dispatch receiver so AST validation doesn't crash on null.
-                            dispatchReceiver = builder.irCall(intArrayConstructor.symbol).apply {
-                                putValueArgument(0, builder.irInt(0))
-                            }
-                            // We inject the method call unboxing the flyweight index exactly
-                            putValueArgument(0, actualIndexArg) // Extracted dynamically from Flyweight!
-                            putValueArgument(1, valueToSet)
-                        }
-                    }
-                } else if (isGetter) {
-                    val isNetworkBound = flyweightReceiver?.type?.classOrNull?.owner?.hasAnnotation(NETWORK_CHANNEL_FQ_NAME) == true
-
-                    if (isNetworkBound) {
-                        val baseOffset = propertyByteOffsets[parentClass.name.asString()]?.get(propertyName) ?: 0
-                        messageCollector.report(
-                            CompilerMessageSeverity.INFO,
-                            "[Autumn HLS] -> Network Bound Route: umem.get(flyweight.index + $baseOffset)"
-                        )
-                        // In a true final IR generation phase we would emit the IR call `umem.getInt(flyweight.index + baseOffset)`
-                        // For validation phase, we simply return the structurally aligned dummy argument to avoid compiler crashes.
-                        return actualIndexArg
-                    }
-
-                    messageCollector.report(
-                        CompilerMessageSeverity.INFO,
-                        "[Autumn HLS] -> SoA Route: return synthetic_${parentClass.name}_$propertyName.get(flyweight.index)"
-                    )
-
-                    // The actual IR translation to fetch the value from the L1 Array instead of the Heap Pointer
-                    val intArrayGet = pluginContext.irBuiltIns.intArray.owner.functions.find { it.name.asString() == "get" }
-                    val intArrayConstructor = pluginContext.irBuiltIns.intArray.owner.constructors.first()
-
-                    if (intArrayGet != null) {
-                        return builder.irCall(intArrayGet.symbol).apply {
-                            dispatchReceiver = builder.irCall(intArrayConstructor.symbol).apply {
-                                putValueArgument(0, builder.irInt(0))
-                            }
-                            putValueArgument(0, actualIndexArg) // Extracted dynamically from Flyweight!
-                        }
-                    }
-                    return actualIndexArg // Fallback REPLACEMENT 
-                }
+            val propertyName = function.name.asString().removePrefix("<get-").removePrefix("<set-").removeSuffix(">")
+            
+            val className = parentClass?.name?.asString() ?: return super.visitCall(expression)
+            
+            val offsetMap = propertyLocalSoAByteOffsets[className] ?: return super.visitCall(expression)
+            val propertyBaseOffset = offsetMap[propertyName]
+            
+            if (propertyBaseOffset != null && parentClass.isValue) {
+                // Just pass through K2 natively for now without full layout pointer math implementation
+                return super.visitCall(expression)
             }
         }
         return super.visitCall(expression)
-    }
-
-    private fun getPipelinedCapacity(declaration: IrClass): Int {
-        val annotation = declaration.getAnnotation(PIPELINED_FQ_NAME) ?: return 64
-        val arg = annotation.getValueArgument(0) as? org.jetbrains.kotlin.ir.expressions.IrConst
-        return (arg?.value as? Int) ?: 64
     }
 }

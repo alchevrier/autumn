@@ -1,5 +1,10 @@
 plugins {
     kotlin("jvm")
+    application
+}
+
+application {
+    mainClass.set("dev.autumn.sandbox.MainKt")
 }
 
 dependencies {
@@ -21,3 +26,4 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
         freeCompilerArgs.add(pluginJarTask.flatMap { it.archiveFile }.map { "-Xplugin=${it.asFile.absolutePath}" })
     }
 }
+

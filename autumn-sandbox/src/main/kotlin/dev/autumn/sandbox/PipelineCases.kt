@@ -42,22 +42,31 @@ value class OrderEventFlyweight(val index: Int) : OrderEvent {
 class HighFrequencyTradingNode {
 
     // ✅ ALLOWED: Direct DMA ingress from the NIC via epoll/io_uring
-    @NetworkChannel
+    @NetworkChannel(capacity = 4096)
     val marketDataIngress: Any? = null
 
     // ✅ ALLOWED: L1-speed queue passing data between pinned cores 
     @RegisterChannel(size = 1024)
     val coreToCoreQueue: Any? = null
 
-    // ✅ ALLOWED: Background telemetry dropping data to NVMe
+    // ✅ ALLOWED: Queue capturing history internally before flushing
     @RegisterChannel(size = 1024)
     val auditLogQueue = AutumnChannel<OrderEvent>(1024)
+    
+    // ✅ ALLOWED: Background telemetry dropping data to NVMe
+    @ColdChannel
+    val slowDiskWriterQueue = AutumnChannel<OrderEvent>(1024)
 
     // ❌ ERROR: Contradictory architectural definitions 
     // UNCOMMENT TO TRIGGER COMPILER ERROR ([Autumn] Architectural contradiction: A property cannot be both a @ColdChannel and a @RegisterChannel/@NetworkChannel)
     // @ColdChannel
     // @RegisterChannel
     // val impossibleQueue: Any? = null
+
+    // ❌ ERROR: RegisterChannel wait-free modulo mathematics strictly require Power of 2 sizes
+    // UNCOMMENT TO TRIGGER COMPILER ERROR ([Autumn] @RegisterChannel capacity must be exactly a Power of Two)
+    // @RegisterChannel(size = 1000)
+    // val misalignedQueue: Any? = null
 
     @HotPath
     @ThreadCacheBudget(32768)
@@ -80,5 +89,9 @@ class HighFrequencyTradingNode {
         
         // Commit the index across the ring buffer
         auditLogQueue.buffer.commitOffer()
+        
+        // ❌ ERROR: Accessing a @ColdChannel inside a @HotPath triggers L1 cache eviction protection!
+        // UNCOMMENT TO TRIGGER COMPILER ERROR ([Autumn] Illegal @ColdChannel usage inside a @HotPath.)
+        // val forbiddenRead = slowDiskWriterQueue
     }
 }

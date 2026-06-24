@@ -22,7 +22,7 @@ class AutumnCheckersExtension(session: FirSession) : FirAdditionalCheckersExtens
 
     override val declarationCheckers: DeclarationCheckers = object : DeclarationCheckers() {
         override val propertyCheckers: Set<FirPropertyChecker>
-            get() = setOf(ChannelConflictChecker)
+            get() = setOf(ChannelConflictChecker, RegisterChannelAlignmentChecker)
             
         override val simpleFunctionCheckers: Set<FirSimpleFunctionChecker>
             get() = setOf(ThreadCacheBudgetChecker)

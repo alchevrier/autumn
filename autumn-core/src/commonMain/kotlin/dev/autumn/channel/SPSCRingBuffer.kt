@@ -46,6 +46,12 @@ class SPSCRingBuffer(val capacity: Int) {
     private var internalUnreleasedRead: Long = 0L
 
     /**
+     * Statically injected by the Autumn K2 Compiler to globally align this buffer's indices
+     * into the unified System MemoryBank for its pooled Structure of Arrays (SoA).
+     */
+    var globalIndexOffset: Int = 0
+
+    /**
      * Poll-mode non-blocking offer.
      * Returns the allocated index in the buffer if successful, or -1 if full.
      */
@@ -62,7 +68,8 @@ class SPSCRingBuffer(val capacity: Int) {
             }
         }
         
-        return (currentWrite.toInt() and mask)
+        // Return globally mapped index to support wait-free hardware bounded pointers
+        return (currentWrite.toInt() and mask) + globalIndexOffset
     }
 
     /**
@@ -91,7 +98,8 @@ class SPSCRingBuffer(val capacity: Int) {
             }
         }
         
-        return (currentRead.toInt() and mask)
+        // Return globally mapped index to support wait-free hardware bounded pointers
+        return (currentRead.toInt() and mask) + globalIndexOffset
     }
 
     /**

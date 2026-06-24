@@ -8,10 +8,12 @@ package dev.autumn.channel
  * - On JVM, this wraps NIO DirectByteBuffers (Project Panama in the future) for local simulation/testing.
  */
 expect class ZeroCopyNetworkChannel(
-    interfaceName: String, 
+    interfaceName: String,
     queueId: Int,
     host: String,
-    port: Int
+    port: Int,
+    startIndex: Int,
+    capacity: Int
 ) {
     
     /**

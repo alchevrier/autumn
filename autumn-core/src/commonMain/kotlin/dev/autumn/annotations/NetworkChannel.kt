@@ -16,4 +16,6 @@ package dev.autumn.annotations
  */
 @Target(AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER)
 @Retention(AnnotationRetention.SOURCE)
-annotation class NetworkChannel
+annotation class NetworkChannel(
+    val capacity: Int
+)

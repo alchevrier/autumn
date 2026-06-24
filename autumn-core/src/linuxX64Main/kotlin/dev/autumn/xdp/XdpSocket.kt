@@ -63,10 +63,11 @@ class XdpSocket(
 
     /**
      * Polls the AF_XDP RX Ring. 
-     * If a packet arrived via DMA, invokes the block with the offset inside the UMEM.
+     * If a packet arrived via DMA, invokes the block with the mathematically calculated 
+     * offset inside the global UMEM.
      * ZERO allocations. Wait-Free. 
      */
-    inline fun pollRx(block: (umemOffset: Int, length: Int) -> Unit) {
+    inline fun pollRx(baseOffset: Int, block: (umemOffset: Int, length: Int) -> Unit) {
         // Read the memory-mapped sequence pointers.
         // Acquire semantics: match what the physical NIC wrote.
         val prodSeq = rxProducer.pointed.value
@@ -86,7 +87,8 @@ class XdpSocket(
             val len = descArray[descBaseOffset + 1].toUInt()
             
             // Execute the inline application FSM logic 
-            block(addr.toInt(), len.toInt())
+            // We inject the globally computed starting partition bound offset!
+            block(baseOffset + addr.toInt(), len.toInt())
 
             // Release semantics: Tell the NIC hardware we consumed it
             rxConsumer.pointed.value = consSeq + 1u

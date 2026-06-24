@@ -14,17 +14,19 @@ actual class ZeroCopyNetworkChannel actual constructor(
     val interfaceName: String,
     val queueId: Int,
     val host: String,
-    val port: Int
+    val port: Int,
+    val startIndex: Int,
+    val capacity: Int
 ) {
     companion object {
         const val FRAME_SIZE = 2048
-        const val NUM_FRAMES = 4096
     }
     
     // DirectByteBuffer completely bypasses the JVM Garbage Collector.
-    // This acts exactly like our C-Interop UMEM on Linux.
+    // For local simulation, we allocate the channel's capacity. 
+    // (In Linux Native, this offsets into a singular massive global UMEM pointer).
     @PublishedApi
-    internal val umem: ByteBuffer = ByteBuffer.allocateDirect(FRAME_SIZE * NUM_FRAMES)
+    internal val umem: ByteBuffer = ByteBuffer.allocateDirect(FRAME_SIZE * capacity)
     
     @PublishedApi
     internal var writeIndex = 0
@@ -51,11 +53,12 @@ actual class ZeroCopyNetworkChannel actual constructor(
         if (senderAddress != null) {
             val length = umem.position() - offset
             
-            // Invoke the application logic
-            block(offset, length)
+            // Invoke the application logic with the simulated global startIndex offset
+            // so the Kotlin compiler plugin array math aligns!
+            block((startIndex * FRAME_SIZE) + offset, length)
             
             // Advance the ring
-            writeIndex = (writeIndex + 1) % NUM_FRAMES
+            writeIndex = (writeIndex + 1) % capacity
         }
     }
 

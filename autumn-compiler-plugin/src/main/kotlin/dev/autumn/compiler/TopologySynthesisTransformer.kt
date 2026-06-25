@@ -16,6 +16,8 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.ir.IrStatement
 
+import org.jetbrains.kotlin.ir.types.typeWith
+
 class TopologySynthesisTransformer(
     private val pluginContext: IrPluginContext,
     private val messageCollector: MessageCollector
@@ -70,7 +72,12 @@ class TopologySynthesisTransformer(
         return super.visitPropertyNew(declaration)
     }
 
+    private val discoveredHandlers = mutableListOf<IrFunction>()
+
     override fun visitFunctionNew(declaration: IrFunction): IrStatement {
+        if (declaration.valueParameters.size == 1) { // Simplify: just find single-parameter functions
+            discoveredHandlers.add(declaration)
+        }
         val st = super.visitFunctionNew(declaration)
         if (declaration.name.asString() == "main" && discoveredChannels.isNotEmpty()) {
             messageCollector.report(
@@ -86,13 +93,42 @@ class TopologySynthesisTransformer(
             val synthesizeFunc = arbiterClass?.functions?.find { it.owner.name.asString() == "synthesize" }
             val pollSweepFunc = arbiterClass?.functions?.find { it.owner.name.asString() == "pollSweep" }
 
-            if (arbiterCtor != null && synthesizeFunc != null && pollSweepFunc != null) {
+            val addChannelFunc = arbiterClass?.functions?.find { it.owner.name.asString() == "addChannel" }
+
+            if (arbiterCtor != null && synthesizeFunc != null && pollSweepFunc != null && addChannelFunc != null) {
                 
                 val initBlock = builder.irBlock {
                     val arbiterInit = irCall(arbiterCtor)
                     val arbiterVar = irTemporary(arbiterInit, "arbiter")
 
+                    for (channelInfo in discoveredChannels) {
+                        val handler = discoveredHandlers.find { 
+                            it.name.asString() == channelInfo.name || 
+                            it.name.asString() == "on${channelInfo.name.replaceFirstChar { it.uppercase() }}"
+                        }
+                        
+                        if (handler != null) {
+                            val addChannelCall = irCall(addChannelFunc).apply {
+                                dispatchReceiver = irGet(arbiterVar)
+                                
+                                val propertyGetter = channelInfo.property.getter?.symbol
+                                if (propertyGetter != null) {
+                                    putValueArgument(0, irCall(propertyGetter))
+                                } else {
+                                    // Fallback / skip
+                                }
+                                
+                                putValueArgument(1, irInt(channelInfo.weight))
+                                
+                                val funType = pluginContext.irBuiltIns.functionN(1).typeWith(pluginContext.irBuiltIns.intType, pluginContext.irBuiltIns.unitType)
+                                putValueArgument(2, irFunctionReference(funType, handler.symbol))
+                            }
+                            +addChannelCall
+                        }
+                    }
+
                     val synthesizeCall = irCall(synthesizeFunc).apply {
+
                         dispatchReceiver = irGet(arbiterVar)
                     }
 

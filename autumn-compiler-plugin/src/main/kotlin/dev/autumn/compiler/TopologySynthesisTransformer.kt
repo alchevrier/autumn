@@ -32,6 +32,7 @@ class TopologySynthesisTransformer(
         val weight: Int,
         val capacity: Int,
         val type: String,
+        val sharded: Int,
         val property: IrProperty
     )
 
@@ -41,6 +42,11 @@ class TopologySynthesisTransformer(
         val isNet = declaration.hasAnnotation(NETWORK_CHANNEL_FQ)
         val isCold = declaration.hasAnnotation(COLD_CHANNEL_FQ)
         val isReg = declaration.hasAnnotation(REGISTER_CHANNEL_FQ)
+
+        messageCollector.report(
+            CompilerMessageSeverity.INFO,
+            "Visiting property ${declaration.name.asString()}, isNet=$isNet, hasAnnots=${declaration.annotations.size}"
+        )
 
         if (isNet || isCold || isReg) {
             val annot = when {
@@ -59,13 +65,16 @@ class TopologySynthesisTransformer(
                 else -> 10
             }
 
+            val shardedArgument = annot?.getValueArgument(2) as? IrConst
+            val sharded = (shardedArgument?.value as? Int) ?: 1
+
             val type = when {
                 isNet -> "HOT_NETWORK"
                 isCold -> "COLD_SHARED"
                 else -> "REGISTER"
             }
 
-            discoveredChannels.add(ChannelTopologyInfo(declaration.name.asString(), weight, capacity, type, declaration))
+            discoveredChannels.add(ChannelTopologyInfo(declaration.name.asString(), weight, capacity, type, sharded, declaration))
             
             // Log it but avoid spamming tests
         }
@@ -74,15 +83,17 @@ class TopologySynthesisTransformer(
 
     private val discoveredHandlers = mutableListOf<IrFunction>()
 
+    private val INJECT_TOPOLOGY_FQ = FqName("dev.autumn.annotations.InjectTopology")
+
     override fun visitFunctionNew(declaration: IrFunction): IrStatement {
         if (declaration.valueParameters.size == 1) { // Simplify: just find single-parameter functions
             discoveredHandlers.add(declaration)
         }
         val st = super.visitFunctionNew(declaration)
-        if (declaration.name.asString() == "main" && discoveredChannels.isNotEmpty()) {
+        if (declaration.hasAnnotation(INJECT_TOPOLOGY_FQ) && discoveredChannels.isNotEmpty()) {
             messageCollector.report(
                 CompilerMessageSeverity.INFO,
-                "[Autumn Topology] Synthesizing Arbiter schedule in main() for ${discoveredChannels.size} channels..."
+                "[Autumn Topology] Synthesizing Arbiter schedule in '${declaration.name.asString()}' for ${discoveredChannels.size} channels..."
             )
             
             val currentBody = declaration.body as? IrBlockBodyImpl ?: return st
@@ -110,11 +121,11 @@ class TopologySynthesisTransformer(
                         if (handler != null) {
                             // --- ZERO-ALLOCATION INTERFACE ERASURE ---
                             // Aggressively modify the AST node to replace the Object reference with a primitive Int.
-                            handler.valueParameters[0].type = pluginContext.irBuiltIns.intType
+                            // handler.valueParameters[0].type = pluginContext.irBuiltIns.intType
                             
                             messageCollector.report(
                                 CompilerMessageSeverity.INFO,
-                                "[Autumn Signature Assassination] Mutated '${handler.name.asString()}' parameter to (Int) to escape JVM Verifier!"
+                                "[Autumn Signature Assassination] Wired '${handler.name.asString()}' parameter!"
                             )
 
                             val addChannelCall = irCall(addChannelFunc).apply {

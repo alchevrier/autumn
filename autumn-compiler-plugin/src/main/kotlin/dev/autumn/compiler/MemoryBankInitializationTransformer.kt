@@ -13,19 +13,23 @@ import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.irGetObject
 
+import org.jetbrains.kotlin.ir.util.hasAnnotation
+
 class MemoryBankInitializationTransformer(
     private val pluginContext: IrPluginContext,
     private val messageCollector: MessageCollector,
     private val totalAllocatedBytes: Int
 ) : IrElementTransformerVoidWithContext() {
 
+    private val INJECT_TOPOLOGY_FQ = FqName("dev.autumn.annotations.InjectTopology")
+
     override fun visitFunctionNew(declaration: IrFunction): org.jetbrains.kotlin.ir.IrStatement {
-        // Find the main() entry point to natively inject Memory Bank Initialization
-        if (declaration.name.asString() == "main" && totalAllocatedBytes > 0) {
+        // Find the designated entry point to natively inject Memory Bank Initialization
+        if (declaration.hasAnnotation(INJECT_TOPOLOGY_FQ) && totalAllocatedBytes > 0) {
             
             messageCollector.report(
                 CompilerMessageSeverity.INFO,
-                "[Autumn HLS] Discovered Entry Point 'main'. Injecting Global Hardware Initialization -> AutumnMemoryBank.allocate($totalAllocatedBytes)"
+                "[Autumn HLS] Discovered Entry Point '${declaration.name.asString()}'. Injecting Global Hardware Initialization -> AutumnMemoryBank.allocate($totalAllocatedBytes)"
             )
 
             val memoryBankClass = pluginContext.referenceClass(org.jetbrains.kotlin.name.ClassId.topLevel(FqName("dev.autumn.memory.AutumnMemoryBank")))

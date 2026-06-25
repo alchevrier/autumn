@@ -18,5 +18,6 @@ package dev.autumn.annotations
 @Retention(AnnotationRetention.SOURCE)
 annotation class NetworkChannel(
     val capacity: Int = 1024,
-    val weight: Int = 100
+    val weight: Int = 100,
+    val sharded: Int = 1
 )

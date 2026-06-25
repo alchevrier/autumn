@@ -1,6 +1,7 @@
 plugins {
     id("org.jetbrains.kotlin.multiplatform")
     id("org.jetbrains.kotlinx.benchmark") version "0.4.11"
+    id("dev.autumn.plugin") version "1.0.2"
 }
 
 kotlin {
@@ -30,4 +31,10 @@ benchmark {
     targets {
         register("jvm")
     }
+}
+
+val runComparison by tasks.registering(JavaExec::class) {
+    val jvmMain = kotlin.targets.getByName("jvm").compilations.getByName("main") as org.jetbrains.kotlin.gradle.plugin.mpp.KotlinJvmCompilation
+    classpath = jvmMain.output.allOutputs + jvmMain.runtimeDependencyFiles
+    mainClass.set("dev.autumn.benchmark.OrderBookComparisonKt")
 }

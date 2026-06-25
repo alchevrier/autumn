@@ -12,5 +12,6 @@ package dev.autumn.annotations
 @Retention(AnnotationRetention.SOURCE)
 annotation class ColdChannel(
     val capacity: Int = 1024,
-    val weight: Int = 1
+    val weight: Int = 1,
+    val sharded: Int = 1
 )

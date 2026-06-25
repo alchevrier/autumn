@@ -9,7 +9,9 @@ actual object AutumnMemoryBank {
     internal var memory: ByteBuffer? = null
 
     actual fun allocate(sizeBytes: Int) {
+        println("AutumnMemoryBank.allocate() called with size = \$sizeBytes")
         memory = ByteBuffer.allocateDirect(sizeBytes).order(ByteOrder.nativeOrder())
+        println("memory is now: \$memory")
     }
 
     actual fun getInt(offset: Int): Int = memory!!.getInt(offset)
@@ -19,7 +21,12 @@ actual object AutumnMemoryBank {
     actual fun setByte(offset: Int, value: Byte) { memory!!.put(offset, value) }
 
     actual fun getLong(offset: Int): Long = memory!!.getLong(offset)
-    actual fun setLong(offset: Int, value: Long) { memory!!.putLong(offset, value) }
+    actual fun setLong(offset: Int, value: Long) { 
+        if (memory == null) {
+            println("NPE ALERT! memory is null in setLong! offset=\$offset")
+        }
+        memory!!.putLong(offset, value) 
+    }
 
     actual fun free() {
         memory = null

@@ -12,6 +12,9 @@ import io.ktor.server.http.content.*
 import java.io.File
 
 @LongLived
+import dev.autumn.annotations.InjectTopology
+
+@InjectTopology
 fun main() {
     embeddedServer(Netty, port = 8080, host = "0.0.0.0") {
         install(CORS) {

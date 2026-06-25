@@ -236,7 +236,9 @@ class PipelinedSoATransformer(
             val offsetMap = propertyLocalSoAByteOffsets[targetClassName] ?: return super.visitCall(expression)
             val propertyBaseOffset = offsetMap[propertyName]
             
-            if (propertyBaseOffset != null && parentClass.isValue) {
+            val isInterface = parentClass.kind == ClassKind.INTERFACE
+            
+            if (propertyBaseOffset != null && (parentClass.isValue || isInterface)) {
                 val byteSizeMap = propertyByteSizes[targetClassName] ?: return super.visitCall(expression)
                 val propertyByteSize = byteSizeMap[propertyName] ?: return super.visitCall(expression)
 
@@ -248,9 +250,6 @@ class PipelinedSoATransformer(
                     else -> return super.visitCall(expression)
                 }
 
-                val indexProperty = parentClass.properties.find { it.name.asString() == "index" } ?: return super.visitCall(expression)
-                val indexGetter = indexProperty.getter ?: return super.visitCall(expression)
-                
                 val memoryBankClass = pluginContext.referenceClass(ClassId.topLevel(FqName("dev.autumn.memory.AutumnMemoryBank")))?.owner ?: return super.visitCall(expression)
                 
                 val intClass = pluginContext.irBuiltIns.intClass.owner
@@ -259,8 +258,16 @@ class PipelinedSoATransformer(
                 
                 val builder = DeclarationIrBuilder(pluginContext, expression.symbol)
                 
-                val idxExpr = builder.irCall(indexGetter.symbol).apply {
-                    dispatchReceiver = expression.dispatchReceiver
+                val idxExpr = if (isInterface) {
+                    // Signature Assassination occurred: The receiver is heavily erased to an Int by TopologySynthesisTransformer!
+                    // Just use the receiver directly (it will be bounds-loaded as an integer parameter).
+                    expression.dispatchReceiver!!
+                } else {
+                    val indexProperty = parentClass.properties.find { it.name.asString() == "index" } ?: return super.visitCall(expression)
+                    val indexGetter = indexProperty.getter ?: return super.visitCall(expression)
+                    builder.irCall(indexGetter.symbol).apply {
+                        dispatchReceiver = expression.dispatchReceiver
+                    }
                 }
                 
                 val idxTimesSize = builder.irCall(intTimes).apply {

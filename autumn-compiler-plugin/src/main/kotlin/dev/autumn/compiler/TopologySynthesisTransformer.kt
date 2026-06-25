@@ -108,6 +108,15 @@ class TopologySynthesisTransformer(
                         }
                         
                         if (handler != null) {
+                            // --- ZERO-ALLOCATION INTERFACE ERASURE ---
+                            // Aggressively modify the AST node to replace the Object reference with a primitive Int.
+                            handler.valueParameters[0].type = pluginContext.irBuiltIns.intType
+                            
+                            messageCollector.report(
+                                CompilerMessageSeverity.INFO,
+                                "[Autumn Signature Assassination] Mutated '${handler.name.asString()}' parameter to (Int) to escape JVM Verifier!"
+                            )
+
                             val addChannelCall = irCall(addChannelFunc).apply {
                                 dispatchReceiver = irGet(arbiterVar)
                                 

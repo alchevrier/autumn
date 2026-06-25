@@ -16,10 +16,10 @@ package dev.autumn.channel
 class AutumnChannel<T>(val capacity: Int) {
     
     /**
-     * The lock-free sequence engine that safely orchestrates index allocations 
-     * between the `@HotPath` core and the `@ColdChannel` core.
+     * The purely temporal data wire that orchestrates index allocations 
+     * between execution domains.
      */
-    val buffer = SPSCRingBuffer(capacity)
+    val buffer = Channel(capacity)
 
     // Note: The actual data payload (e.g. IntArray, LongArray) is explicitly NOT held 
     // here in standard Kotlin generics to avoid boxing. 

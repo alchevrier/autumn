@@ -1,0 +1,5 @@
+package = dev.autumn.os
+headers = autumn_os.h
+compilerOpts = -Isrc/nativeInterop/cinterop
+libraryPaths = src/nativeInterop/cinterop
+staticLibraries = autumn_os.a

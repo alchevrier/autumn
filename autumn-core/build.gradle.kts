@@ -13,6 +13,10 @@ kotlin {
                     defFile(project.file("src/nativeInterop/cinterop/autumn_xdp.def"))
                     compilerOpts("-Isrc/nativeInterop/cinterop")
                 }
+                val autumn_os by creating {
+                    defFile(project.file("src/nativeInterop/cinterop/autumn_os.def"))
+                    compilerOpts("-Isrc/nativeInterop/cinterop")
+                }
             }
         }
     }
@@ -31,6 +35,11 @@ kotlin {
             implementation(kotlin("test-common"))
             implementation(kotlin("test-annotations-common"))
         }
+        val jvmTest by getting {
+            dependencies {
+                implementation("commons-codec:commons-codec:1.16.0")
+            }
+        }
     }
 }
 tasks.register<Exec>("compileAutumnXdp") {
@@ -45,7 +54,22 @@ tasks.register<Exec>("compileAutumnXdp") {
     commandLine("bash", "-c", "gcc -c -fPIC ${cFile.absolutePath} -o ${oFile.absolutePath} && ar rcs ${aFile.absolutePath} ${oFile.absolutePath}")
 }
 
+tasks.register<Exec>("compileAutumnOs") {
+    val srcDir = file("src/nativeInterop/cinterop")
+    val cFile = srcDir.resolve("autumn_os.c")
+    val oFile = srcDir.resolve("autumn_os.o")
+    val aFile = srcDir.resolve("autumn_os.a")
+
+    inputs.file(cFile)
+    outputs.file(aFile)
+
+    commandLine("bash", "-c", "gcc -c -fPIC ${cFile.absolutePath} -o ${oFile.absolutePath} && ar rcs ${aFile.absolutePath} ${oFile.absolutePath}")
+}
+
 // Make sure that cinterop waits for the C compilation to finish
-tasks.matching { it.name.startsWith("cinterop") }.configureEach {
+tasks.matching { it.name.startsWith("cinteropAutumn_xdp") }.configureEach {
     dependsOn("compileAutumnXdp")
+}
+tasks.matching { it.name.startsWith("cinteropAutumn_os") }.configureEach {
+    dependsOn("compileAutumnOs")
 }

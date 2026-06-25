@@ -1,6 +1,7 @@
 package dev.autumn.scheduler
 
 import dev.autumn.channel.AutumnChannel
+import dev.autumn.channel.Channel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -8,27 +9,18 @@ import kotlin.test.assertTrue
 class AutumnSchedulerTest {
 
     @Test
-    fun `test clock-aware deterministic FSM ticks`() {
+    fun `test clock-aware deterministic FSM ticks via Hot Arbiter`() {
         val scheduler = AutumnScheduler()
+        val arbiter = Arbiter(profile = DispatcherProfile.HOT_ISOLATED)
         val ingressQueue = AutumnChannel<Any>(16)
-        val egressQueue = AutumnChannel<Any>(16)
 
-        var processedCount = 0
+        var handledIdx = -1
 
-        // The compiler mechanically binds the precise dataflow pipeline 
-        // into the clock cycle schedule
-        scheduler.bindOperation(expectedCycles = 1L, isNetworkIngress = true) {
-            val idx = ingressQueue.buffer.poll()
-            if (idx != -1) {
-                processedCount++
-                
-                val outIdx = egressQueue.buffer.offer()
-                if (outIdx != -1) {
-                    egressQueue.buffer.commitOffer()
-                }
-                ingressQueue.buffer.commitPoll()
-            }
+        // In the fully assembled backend, this binds channels with their topological weights.
+        arbiter.addChannel(ingressQueue.buffer, weight = 1) { idx ->
+            handledIdx = idx
         }
+        scheduler.bindArbiter(arbiter)
 
         // Network Ingress Simulation (Inject 5 items)
         for (i in 0 until 5) {
@@ -43,14 +35,64 @@ class AutumnSchedulerTest {
         }
 
         assertEquals(10L, scheduler.getClock(), "Clock should track exact ticks")
-        assertEquals(5, processedCount, "Should exact process precisely bounded by cycle operations")
+        assertEquals(4, handledIdx) // Last inserted item was 4
         
-        // Assert the data was piped to the egress channel correctly
-        var egressDrained = 0
-        while(egressQueue.buffer.poll() != -1) {
-            egressDrained++
-            egressQueue.buffer.commitPoll()
+        // Assert the queue was drained natively by the synthesized Arbiter
+        val remainingIdx = ingressQueue.buffer.poll()
+        assertEquals(-1, remainingIdx, "Scheduler should have swept the channel entirely")
+    }
+
+    @Test
+    fun `test unwinding synthesis based on topological weights`() {
+        val scheduler = AutumnScheduler()
+        val arbiter = Arbiter(profile = DispatcherProfile.HOT_ISOLATED)
+        val netChannel = Channel(16)
+        val sessionChannel = Channel(16)
+        val coldChannel = Channel(16)
+
+        var fastProcessed = 0
+
+        // Network weighs 3x more than cold, and session 2x more
+        arbiter.addChannel(netChannel, weight = 3) { fastProcessed++ }
+        arbiter.addChannel(sessionChannel, weight = 2) { }
+        arbiter.addChannel(coldChannel, weight = 1) { }
+        
+        scheduler.bindArbiter(arbiter)
+
+        // We injected 3 + 2 + 1 = 6 schedule operations. Let's clock exactly 1 time.
+        // It should poll the network channel 3 times on the first tick!
+        
+        // Inject 5 items into network channel
+        for (i in 0 until 5) {
+            netChannel.offer()
+            netChannel.commitOffer()
         }
-        assertEquals(5, egressDrained)
+
+        scheduler.tick()
+
+        // The arbiter should have consumed exactly 3 items from network channel because weight = 3
+        assertEquals(3, fastProcessed) // The handler should have been invoked 3 times
+    }
+
+    @Test
+    fun `test cold shared dispatcher profile execution`() {
+        val scheduler = AutumnScheduler()
+        val arbiter = Arbiter(profile = DispatcherProfile.COLD_SHARED)
+        val uiChannel = Channel(16)
+
+        arbiter.addChannel(uiChannel, weight = 1) { }
+        scheduler.bindArbiter(arbiter)
+
+        var yieldTriggered = false
+        scheduler.onIdle = { profile ->
+            if (profile == DispatcherProfile.COLD_SHARED) {
+                yieldTriggered = true
+            }
+        }
+
+        scheduler.tick() // Executes without data, triggering OS yield callback
+
+        assertEquals(1L, scheduler.getClock())
+        assertTrue(yieldTriggered, "Scheduler should trigger onIdle hook for COLD_SHARED profiles when entirely dry")
     }
 }

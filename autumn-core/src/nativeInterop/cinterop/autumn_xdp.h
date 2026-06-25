@@ -7,11 +7,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-// Hardware Clock & Pinning Helpers
-uint64_t autumn_rdtsc(void);
-void autumn_pause(void);
-int autumn_pin_to_core(int core_id);
-
 // Lock-free ring structures that we map directly to Kotlin CPointer<UIntVar>
 struct autumn_ring_prod {
     uint32_t *producer;

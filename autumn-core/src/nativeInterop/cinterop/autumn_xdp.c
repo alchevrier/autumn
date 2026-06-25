@@ -16,25 +16,6 @@
 #define AUTUMN_FRAME_SIZE 2048
 #define AUTUMN_RING_SIZE 2048
 
-uint64_t autumn_rdtsc(void) {
-    uint32_t lo, hi;
-    __asm__ volatile ("rdtsc" : "=a" (lo), "=d" (hi));
-    return ((uint64_t)hi << 32) | lo;
-}
-
-void autumn_pause(void) {
-    __asm__ volatile ("pause");
-}
-
-int autumn_pin_to_core(int core_id) {
-    cpu_set_t cpuset;
-    __CPU_ZERO_S(sizeof(cpu_set_t), &cpuset);
-    __CPU_SET_S(core_id, sizeof(cpu_set_t), &cpuset);
-    
-    pthread_t current_thread = pthread_self();
-    return pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
-}
-
 struct autumn_umem *autumn_configure_umem(void *buffer, size_t size) {
     struct autumn_umem *umem = calloc(1, sizeof(struct autumn_umem));
     if (!umem) return NULL;

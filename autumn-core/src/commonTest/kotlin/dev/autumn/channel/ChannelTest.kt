@@ -4,21 +4,21 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
-class SPSCRingBufferTest {
+class ChannelTest {
 
     @Test
     fun `test power of two capacity requirement`() {
         assertFailsWith<IllegalArgumentException> {
-            SPSCRingBuffer(10)
+            Channel(10)
         }
         // Should not fail
-        SPSCRingBuffer(16)
-        SPSCRingBuffer(1024)
+        Channel(16)
+        Channel(1024)
     }
 
     @Test
     fun `test basic offer and poll`() {
-        val buffer = SPSCRingBuffer(4)
+        val buffer = Channel(4)
 
         // Initial state should be empty
         assertEquals(-1, buffer.poll())
@@ -39,7 +39,7 @@ class SPSCRingBufferTest {
 
     @Test
     fun `test buffer full and wrap around`() {
-        val buffer = SPSCRingBuffer(4)
+        val buffer = Channel(4)
 
         // Fill the buffer
         assertEquals(0, buffer.offer()); buffer.commitOffer()

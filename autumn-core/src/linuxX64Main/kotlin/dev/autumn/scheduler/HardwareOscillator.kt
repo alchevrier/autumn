@@ -1,8 +1,8 @@
 package dev.autumn.scheduler
 
-import dev.autumn.xdp.autumn_rdtsc
-import dev.autumn.xdp.autumn_pause
-import dev.autumn.xdp.autumn_pin_to_core
+import dev.autumn.os.autumn_rdtsc
+import dev.autumn.os.autumn_pause
+import dev.autumn.os.autumn_pin_to_core
 import platform.posix.sched_yield
 import platform.posix.usleep
 import kotlin.concurrent.AtomicInt

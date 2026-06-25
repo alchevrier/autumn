@@ -32,5 +32,9 @@ class AutumnIrGenerationExtension(
             val initializationTransformer = MemoryBankInitializationTransformer(pluginContext, messageCollector, totalBytesToAllocate)
             moduleFragment.transform(initializationTransformer, null)
         }
+
+        // 5. Synthesize continuous Dataflow topologies (Network, Cold, Register Channels) into a unified Arbiter schedule.
+        val topologyTransformer = TopologySynthesisTransformer(pluginContext, messageCollector)
+        moduleFragment.transform(topologyTransformer, null)
     }
 }

@@ -10,4 +10,7 @@ package dev.autumn.annotations
  */
 @Target(AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER)
 @Retention(AnnotationRetention.SOURCE)
-annotation class ColdChannel
+annotation class ColdChannel(
+    val capacity: Int = 1024,
+    val weight: Int = 1
+)

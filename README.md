@@ -155,8 +155,8 @@ Autumn turns idiomatic Kotlin into locked-down DPDK-tier pipelines. You define t
 ```kotlin
 // 1. Define a Flyweight struct
 // This generates no objects; 'index' simply maps into the globally allocated AutumnMemoryBank.
-// @Pipelined automatically enforces @JvmInline to guarantee zero heap instantiation.
 @Pipelined
+@JvmInline
 value class OrderEvent(val index: Int) {
     // Properties are written idiomatically.
     // The K2 compiler plugin statically intercepts these getters and rewrites them into

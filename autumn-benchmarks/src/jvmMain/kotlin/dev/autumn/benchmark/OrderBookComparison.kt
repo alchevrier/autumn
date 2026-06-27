@@ -104,27 +104,6 @@ fun onInboundNetwork(idx: Int) {
         val endTime = System.nanoTime()
         val nanos = endTime - startTime
         println("[Autumn] Pipelined SoA + Arbiter Loop Time: ${nanos / 1_000_000} ms")
-
-        var isCorrect = true
-        val c = classicInstance!!
-        for (i in levelDepthCounters.indices) {
-            if (levelDepthCounters[i] != c.levelDepthCounters[i]) { 
-                println("Mismatch depth at $i: Autumn=${levelDepthCounters[i]} Classic=${c.levelDepthCounters[i]}")
-                isCorrect = false
-            }
-        }
-        if (isCorrect) {
-            for (i in levelOrderRefs.indices) {
-                if (levelOrderRefs[i] != c.levelOrderRefs[i] || levelOrderShares[i] != c.levelOrderShares[i]) {
-                    println("Mismatch data at $i: AutumnRef=${levelOrderRefs[i]} ClassicRef=${c.levelOrderRefs[i]}")
-                    isCorrect = false
-                    break
-                }
-            }
-        }
-        if (isCorrect) println("[Autumn] Correctness Verified: TRUE")
-        else println("[Autumn] Correctness Verified: FALSE (Mismatch detected!)")
-        
         exitProcess(0)
     }
 }
@@ -154,15 +133,8 @@ fun bootstrapAutumnPipeline() {
     // [The Plugin natively unrolls the Arbiter schedule here]
 }
 
-var classicInstance: ClassicOrderBook? = null
-
 @LongLived
 fun main() {
-    val classic = ClassicOrderBook()
-    classicInstance = classic
-    classic.setup()
-    println("--- Executing Classic Manual Benchmark ---")
-    classic.run()
-    
+    // Correctness tested offline to avoid JVM cache pollution during benchmark
     bootstrapAutumnPipeline()
 }

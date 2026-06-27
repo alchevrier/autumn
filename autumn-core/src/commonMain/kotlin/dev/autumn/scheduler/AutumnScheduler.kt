@@ -38,9 +38,10 @@ class AutumnScheduler(
     private var currentCycle: Long = 0L
 
     private val arbiters = mutableListOf<Arbiter>()
+    private val staticTicks = mutableListOf<() -> Boolean>()
 
     /**
-     * Mounts an Arbiter (execution pipeline) onto this hardware clock.
+     * Mounts a dynamic Arbiter (execution pipeline) onto this hardware clock.
      */
     fun bindArbiter(arbiter: Arbiter) {
         arbiter.synthesize()
@@ -48,14 +49,29 @@ class AutumnScheduler(
     }
 
     /**
+     * Mounts a statically compiled unrolled topology loop.
+     */
+    fun bindStaticTopology(tickFunc: () -> Boolean) {
+        staticTicks.add(tickFunc)
+    }
+
+    /**
      * Advances the finite state machine by exactly one clock cycle boundary.
-     * This pulses all mounted arbiters sequentially.
+     * This pulses all mounted modules sequentially.
      */
     fun tick() {
         var anyDataProcessed = false
 
+        // Pulse dynamic topology
         for (arbiter in arbiters) {
             if (arbiter.pollSweep()) {
+                anyDataProcessed = true
+            }
+        }
+        
+        // Pulse static verified topologies
+        for (func in staticTicks) {
+            if (func()) {
                 anyDataProcessed = true
             }
         }

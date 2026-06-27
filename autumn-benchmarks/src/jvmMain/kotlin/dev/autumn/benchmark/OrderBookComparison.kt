@@ -133,11 +133,22 @@ fun onInboundNetwork(idx: Int) {
 }
 
 @InjectTopology
+fun tickAutumnPipeline() {
+    // Compiler injects exactly one sequence of poll checks here.
+}
+
 fun bootstrapAutumnPipeline() {
     println("\n--- Executing JVM Compiler-Rewritten Topology ---")
     // Simulate NIC filling the buffer into the memory bank
     AutumnMemoryBank.allocate(16777216 * 20)
     startTime = System.nanoTime()
+    
+    // Loop the injected tick instead of relying on the plugin to spin
+    Thread {
+        while (true) {
+            tickAutumnPipeline()
+        }
+    }.start()
     
     // Instead of prefilling 10M, we stream 1M individually into the pipeline 
     // to measure how fast the loop picks them up! 
@@ -154,7 +165,6 @@ fun bootstrapAutumnPipeline() {
             inboundNetwork.buffer.commitOffer()
         }
     }.start()
-    // [The Plugin natively unrolls the Arbiter schedule here]
 }
 
 var classicInstance: ClassicOrderBook? = null

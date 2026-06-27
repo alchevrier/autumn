@@ -127,45 +127,34 @@ class TopologySynthesisTransformer(
                                         val lambdaBuilder = DeclarationIrBuilder(pluginContext, symbol)
                                         body = lambdaBuilder.irBlockBody {
                                             val chanValLocal = irTemporary(irCall(propertyGetter))
-                                            val loop = irWhile().apply {
-                                                condition = irTrue()
-                                                body = irBlock {
-                                                    val pollCall = irCall(pollPartitionFunc.symbol).apply {
+                                            val pollCall = irCall(pollPartitionFunc.symbol).apply {
+                                                dispatchReceiver = irGet(chanValLocal)
+                                                putValueArgument(0, irInt(i))
+                                            }
+                                            val polledIdx = irTemporary(pollCall, "idx_${channelInfo.name}_$i")
+
+                                            val anyHandledVar = irTemporary(irFalse(), "anyHandled", isMutable = true)
+                                            
+                                            val ifNotMinusOne = irIfThen(type = pluginContext.irBuiltIns.unitType,
+                                                condition = irNotEquals(irGet(polledIdx), irInt(-1)),
+                                                thenPart = irBlock {
+                                                    +irSet(anyHandledVar, irTrue())
+                                                    val eventType = handler.valueParameters[0].type
+                                                    val targetClass = eventType.classOrNull?.owner as? org.jetbrains.kotlin.ir.declarations.IrClass
+                                                    val constructor = targetClass?.constructors?.firstOrNull { it.isPrimary }
+                                                    val arg = if (constructor != null) {
+                                                        irCall(constructor.symbol).apply { putValueArgument(0, irGet(polledIdx)) }
+                                                    } else {
+                                                        irGet(polledIdx)
+                                                    }
+                                                    +irCall(handler.symbol).apply { putValueArgument(0, arg) }
+                                                    +irCall(commitPollPartitionFunc.symbol).apply {
                                                         dispatchReceiver = irGet(chanValLocal)
                                                         putValueArgument(0, irInt(i))
                                                     }
-                                                    val polledIdx = irTemporary(pollCall, "idx_${channelInfo.name}_$i")
-
-                                                    val yieldFunc = pluginContext.referenceClass(ClassId.topLevel(FqName("java.lang.Thread")))?.owner?.functions?.find { it.name.asString() == "yield" && it.valueParameters.isEmpty() }
-                                                    val anyHandledVar = irTemporary(irFalse(), "anyHandled", isMutable = true)
-                                                    
-                                                    val ifNotMinusOne = irIfThen(type = pluginContext.irBuiltIns.unitType,
-                                                        condition = irNotEquals(irGet(polledIdx), irInt(-1)),
-                                                        thenPart = irBlock {
-                                                            +irSet(anyHandledVar, irTrue())
-                                                            val eventType = handler.valueParameters[0].type
-                                                            val targetClass = eventType.classOrNull?.owner as? org.jetbrains.kotlin.ir.declarations.IrClass
-                                                            val constructor = targetClass?.constructors?.firstOrNull { it.isPrimary }
-                                                            val arg = if (constructor != null) {
-                                                                irCall(constructor.symbol).apply { putValueArgument(0, irGet(polledIdx)) }
-                                                            } else {
-                                                                irGet(polledIdx)
-                                                            }
-                                                            +irCall(handler.symbol).apply { putValueArgument(0, arg) }
-                                                            +irCall(commitPollPartitionFunc.symbol).apply {
-                                                                dispatchReceiver = irGet(chanValLocal)
-                                                                putValueArgument(0, irInt(i))
-                                                            }
-                                                        }
-                                                    )
-                                                    +ifNotMinusOne
-                                                    if (yieldFunc != null) {
-                                                        val notHandled = irCall(pluginContext.irBuiltIns.booleanNotSymbol).apply { dispatchReceiver = irGet(anyHandledVar) }
-                                                        +irIfThen(type = pluginContext.irBuiltIns.unitType, condition = notHandled, thenPart = irCall(yieldFunc.symbol))
-                                                    }
                                                 }
-                                            }
-                                            +loop
+                                            )
+                                            +ifNotMinusOne
                                         }
                                     }
                                     val functionType = pluginContext.irBuiltIns.functionN(0).typeWith(pluginContext.irBuiltIns.unitType)
@@ -183,69 +172,34 @@ class TopologySynthesisTransformer(
                                 val threadClass = pluginContext.referenceClass(ClassId.topLevel(FqName("java.lang.Thread")))?.owner
                                 val yieldFunc = threadClass?.functions?.find { it.name.asString() == "yield" && it.valueParameters.isEmpty() }
                                 
-                                val loop = irWhile().apply {
-                                    condition = irTrue()
-                                    body = irBlock {
-                                        val anyHandledVar = irTemporary(irFalse(), "anyHandled", isMutable = true)
-                                        
-                                        val chanVal = irTemporary(irCall(propertyGetter))
-                                        val pollCall = irCall(pollFunc.symbol).apply { dispatchReceiver = irGet(chanVal) }
-                                        val polledIdx = irTemporary(pollCall, "idx")
+                                val chanVal = irTemporary(irCall(propertyGetter))
+                                val pollCall = irCall(pollFunc.symbol).apply { dispatchReceiver = irGet(chanVal) }
+                                val polledIdx = irTemporary(pollCall, "idx")
 
-                                        val ifNotMinusOne = irIfThen(type = pluginContext.irBuiltIns.unitType,
-                                            condition = irNotEquals(irGet(polledIdx), irInt(-1)),
-                                            thenPart = irBlock {
-                                                +irSet(anyHandledVar, irTrue())
-                                                val eventType = handler.valueParameters[0].type
-                                                val targetClass = eventType.classOrNull?.owner as? org.jetbrains.kotlin.ir.declarations.IrClass
-                                                val constructor = targetClass?.constructors?.firstOrNull { it.isPrimary }
-                                                val arg = if (constructor != null) {
-                                                    irCall(constructor.symbol).apply { putValueArgument(0, irGet(polledIdx)) }
-                                                } else {
-                                                    irGet(polledIdx)
-                                                }
-                                                +irCall(handler.symbol).apply { putValueArgument(0, arg) }
-                                                +irCall(commitPollFunc.symbol).apply { dispatchReceiver = irGet(chanVal) }
-                                            }
-                                        )
-                                        +ifNotMinusOne
-                                        
-                                        if (yieldFunc != null) {
-                                            val notHandled = irCall(pluginContext.irBuiltIns.booleanNotSymbol).apply {
-                                                dispatchReceiver = irGet(anyHandledVar)
-                                            }
-                                            val ifIdle = irIfThen(type = pluginContext.irBuiltIns.unitType,
-                                                condition = notHandled,
-                                                thenPart = irCall(yieldFunc.symbol)
-                                            )
-                                            +ifIdle
+                                val ifNotMinusOne = irIfThen(type = pluginContext.irBuiltIns.unitType,
+                                    condition = irNotEquals(irGet(polledIdx), irInt(-1)),
+                                    thenPart = irBlock {
+                                        val eventType = handler.valueParameters[0].type
+                                        val targetClass = eventType.classOrNull?.owner as? org.jetbrains.kotlin.ir.declarations.IrClass
+                                        val constructor = targetClass?.constructors?.firstOrNull { it.isPrimary }
+                                        val arg = if (constructor != null) {
+                                            irCall(constructor.symbol).apply { putValueArgument(0, irGet(polledIdx)) }
+                                        } else {
+                                            irGet(polledIdx)
                                         }
+                                        +irCall(handler.symbol).apply { putValueArgument(0, arg) }
+                                        +irCall(commitPollFunc.symbol).apply { dispatchReceiver = irGet(chanVal) }
                                     }
-                                }
-                                +loop
+                                )
+                                +ifNotMinusOne
                             }
                         }
                     }
                 }
                 currentBody.statements.add(initBlock)
 
-                // Inject Thread.sleep to keep the JVM alive after spawning
-                if (discoveredChannels.any { it.sharded > 1 }) {
-                    val threadClass = pluginContext.referenceClass(ClassId.topLevel(FqName("java.lang.Thread")))?.owner
-                    val sleepFunc = threadClass?.functions?.find { it.name.asString() == "sleep" && it.valueParameters.size == 1 }
-                    if (sleepFunc != null) {
-                        val waitBlock = builder.irBlock {
-                            val waitLoop = irWhile().apply {
-                                condition = irTrue()
-                                body = irBlock {
-                                    +irCall(sleepFunc.symbol).apply { putValueArgument(0, irLong(1000L)) }
-                                }
-                            }
-                            +waitLoop
-                        }
-                        currentBody.statements.add(waitBlock)
-                    }
-                }
+                // Inject Thread.sleep to keep the JVM alive after spawning 
+                // Removed because we no longer background spawn
             }
         }
         return st

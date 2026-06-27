@@ -51,35 +51,57 @@ Autumn effectively acts as a hardware description language that compiles nativel
 
 ## Architecture
 
+Because Autumn scales from bare-metal servers to consumer mobile phones, the architecture falls into two distinct execution topologies:
+
+### 1. Server / High-Frequency Trading (HFT) Pipeline
+This topology uses the structural annotations (`@NetworkChannel`, `@ColdChannel`) to generate a lock-free, multi-core mechanical sympathy pipeline capable of tens of millions of operations per second.
+
 ```text
-                        +----------------------+
-                        | OS Socket / Network  |
-                        | payloads (JSON/Raw)  |
-                        +----------+-----------+
-                                   |
-                                   v
-                         +-------------------+
-                         | autumn-resolver   |
-                         | (Network Engine)  |
-                         +---------+---------+
-                                   |
-                                   v
-                         +-------------------+
-                         | autumn-config     |
-                         | (Zero-alloc parse)|
-                         +---------+---------+
-                                   |
-                                   v
-                         +-------------------+
-                         | autumn-state      |
-                         | (Epoch Interrupt) |
-                         +---------+---------+
-                                   |
-                                   v
-                         +-------------------+
-                         | autumn-ui         |
-                         | (Canvas Binding)  |
-                         +-------------------+
+    +-----------------------+
+    | NIC / AF_XDP / Socket |
+    +-----------+-----------+
+                | @NetworkChannel (Wait-free SPSC Ring Buffer)
+                v
+    +-----------------------+
+    | Autumn Arbiter (FSM)  | <-- Statically synthesized to a branch-free while(true) loop
+    +-----+-----------+-----+
+          |           |
+          |           | @ColdChannel (Zero-copy multicasting fan-out)
+          |           v
+          |     +-----------------------+
+          |     | Risk / Logging Server |
+          |     +-----------------------+
+          |
+          | @RegisterChannel (Primitive Offset Routing)
+          v
+    +-----------------------+
+    | OrderBook / Matching  | <-- Direct AutumnMemoryBank (SoA) Mutation
+    +-----------------------+
+```
+
+### 2. Mobile / UI Rendering Pipeline
+This topology treats the UI as an external physical display attached to an embedded system. It completely decouples network processing from Android/iOS frame drops by converting standard object graphs into pure integer arrays.
+
+```text
+    +-----------------------+
+    | Network Sockets (Raw) |
+    +-----------+-----------+
+                | @NetworkChannel
+                v
+    +-----------------------+       +-----------------------+
+    | Autumn Config Parser  | ----> | String / Byte Registry|
+    | (Zero-Allocation)     |       | (Flat Native Offsets) |
+    +-----------+-----------+       +-----------------------+
+                | 
+                v
+    +-----------------------+
+    | Epoch State Engine    | <-- Coalesces mutation ticks into a single hardware pulse
+    +-----------+-----------+
+                |
+                v
+    +-----------------------+
+    | Native UI / Compose   | <-- Wakes up and resolves raw offsets straight to pixels
+    +-----------------------+
 ```
 
 ## Repository structure

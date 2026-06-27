@@ -12,9 +12,9 @@ By integrating directly at the Intermediate Representation (IR) generation phase
 
 ### 1. Topology Synthesis (`TopologySynthesisTransformer.kt`)
 This is the heart of Autumn's high-speed routing. The plugin sweeps the codebase for hardware-annotated boundaries (`@NetworkChannel`, `@ColdChannel`, etc.) and completely rewrites the developer's idiomatic function blocks:
-- **FSM FSM Loop Unrolling:** Instead of spinning up standard `java.lang.Thread` pools or `runBlocking` Coroutines, it converts handler functions (e.g., `fun onInboundNetwork()`) into statically generated `while(true)` FSM blocks.
-- **Hardware-Sympathetic Queues:** It binds the unrolled loop directly to pre-allocated `Channel` multiplatform SPSC structures via the `poll()` function, natively injecting thread-aware cache yields when the circuit is dry.
-- **Topological Thread Binding:** When it detects `@NetworkChannel(sharded = N)`, it injects `AutumnRuntime.spawn` calls, mapping FSM FSM bounds lock-free across `N` physically padded threads.
+- **Scheduler Delegation:** *(In progress)* Continues evolving the FSM generation from hardcoded `while(true)` blocks into highly cooperative topologies executing under the `AutumnScheduler` tick abstraction to support cleaner OS interaction boundaries (especially for Android UI threads).
+- **Hardware-Sympathetic Queues:** It binds the unrolled loops directly to pre-allocated `Channel` multiplatform SPSC structures via the `poll()` function, natively injecting thread-aware cache yields when the circuit is dry.
+- **Topological Thread Binding:** When it detects `@NetworkChannel(sharded = N)`, it injects `AutumnRuntime.spawn` calls, mapping FSM bounds lock-free across `N` physically padded threads.
 
 ### 2. Global Memory Struct Pooling (`@Pipelined` Interception)
 *(Currently migrating through IR reflection updates)*

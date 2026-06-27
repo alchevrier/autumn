@@ -35,7 +35,7 @@ class AutumnSchedulerTest {
         }
 
         assertEquals(10L, scheduler.getClock(), "Clock should track exact ticks")
-        assertEquals(4, handledIdx) // Last inserted item was 4
+        assertEquals(5, handledIdx) // Last inserted item was 5 (1-based index)
         
         // Assert the queue was drained natively by the synthesized Arbiter
         val remainingIdx = ingressQueue.buffer.poll()

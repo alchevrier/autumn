@@ -154,12 +154,15 @@ Autumn turns idiomatic Kotlin into locked-down DPDK-tier pipelines. You define t
 
 ```kotlin
 // 1. Define a Flyweight struct
-// This generates no objects; 'index' simply maps into the globally allocated AutumnMemoryBank
+// This generates no objects; 'index' simply maps into the globally allocated AutumnMemoryBank.
+// @Pipelined automatically enforces @JvmInline to guarantee zero heap instantiation.
 @Pipelined
-@JvmInline
 value class OrderEvent(val index: Int) {
-    val ref: Long get() = AutumnMemoryBank.getLong(67108864L + (index * 8))
-    val price: Int get() = AutumnMemoryBank.getInt(268435456L + (index * 4))
+    // Properties are written idiomatically.
+    // The K2 compiler plugin statically intercepts these getters and rewrites them into
+    // pre-computed AutumnMemoryBank offset equations at compile time.
+    val ref: Long get() = 0L
+    val price: Int get() = 0
 }
 
 // 2. Declare a hardware-sympathetic SPSC ring buffer

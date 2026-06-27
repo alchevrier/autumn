@@ -63,7 +63,7 @@ This topology uses the structural annotations (`@NetworkChannel`, `@ColdChannel`
                 | @NetworkChannel (Wait-free SPSC Ring Buffer)
                 v
     +-----------------------+
-    | Autumn Arbiter (FSM)  | <-- Statically synthesized to a branch-free while(true) loop
+    | Autumn Arbiter (FSM)  | <-- Statically synthesized to a deterministic tick() frame
     +-----+-----------+-----+
           |           |
           |           | @ColdChannel (Zero-copy multicasting fan-out)
@@ -173,7 +173,7 @@ value class OrderEvent(val index: Int) {
 val inboundNetwork = AutumnChannel<OrderEvent>(16777216)
 
 // 3. Define the Hot Loop
-// The @LongLived handler is intercepted by K2, unrolling it into a flat while(true) block 
+// The @LongLived handler is intercepted by K2, unrolling it into a static frame 
 // tracking the thread-local indices without GC boundaries or OS context switching.
 @LongLived
 fun onInboundNetwork(idx: Int) {
@@ -186,8 +186,8 @@ fun onInboundNetwork(idx: Int) {
 
 // 4. Synthesize the Topology
 @InjectTopology
-fun startServer() {
-    // The Compiler natively injects multi-core FSM FSM polling loops here, 
+fun tickServer() {
+    // The Compiler natively injects a deterministic hardware evaluation frame here, 
     // pulling bytes directly off the NIC and routing across L1-padded rings.
 }
 ```

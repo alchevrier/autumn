@@ -7,9 +7,11 @@ Circuit-based, zero-allocation frontend skeleton for mobile and web.
 
 ## What is Autumn?
 
-Autumn is a Kotlin Multiplatform framework built around a **circuit-based programming model** for commodity hardware. Originally conceived to eliminate GC pauses in UI state management, it has evolved into a full High-Level Synthesis (HLS) framework for CPUs capable of building bare-metal High-Frequency Trading (HFT) pipelines natively.
+Autumn is a Kotlin Multiplatform framework that makes **circuit-aware programming accessible across all platforms**. At its core, Autumn aligns software architecture with the physical reality of a computer: an event-driven system subscribing to the clock of the CPU.
 
-It decouples core logic into Finite State Machines (FSMs), enforces strict memory bounds by design (Structure-of-Arrays), and overrides standard OS function calls via custom compiler plugins to create lock-free primitive ring-buffer wires (`mmap` IPC and thread-pinned data pipelines). By bypassing the garbage collector and eliminating pointer indirection, Autumn guarantees deterministic, nanosecond-tier latency across Linux HFT servers, Android (via ART), iOS (via Mach-O LLVM), and the Web.
+Traditional software abstractions rely on expensive object graphs, OS-level thread scheduling, and unpredictable Garbage Collection. Hardware, however, processes continuous signals through bounded registers, physical cache lines, and deterministic clock ticks. Autumn brings this mechanical sympathy to high-level code by applying hardware-aware systems engineering techniques directly at the design and compiler level.
+
+Using custom Kotlin K2 Compiler plugins, Autumn translates declarative, idiomatic Kotlin into lock-free, zero-allocation Finite State Machines (FSMs) connected by primitive ring-buffer wires. By bypassing standard OS abstractions and treating commodity CPUs like custom ASICs, Autumn guarantees deterministic, nanosecond-tier latency—whether you are deploying a bare-metal High-Frequency Trading (HFT) pipeline on Linux or rendering a stutter-free 120fps Jetpack Compose UI on Android, Web, or iOS.
 
 ## Core pipeline: Socket to Pixel
 

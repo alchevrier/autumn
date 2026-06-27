@@ -12,8 +12,8 @@ By integrating directly at the Intermediate Representation (IR) generation phase
 
 ### 1. Topology Synthesis (`TopologySynthesisTransformer.kt`)
 This is the heart of Autumn's high-speed routing. The plugin sweeps the codebase for hardware-annotated boundaries (`@NetworkChannel`, `@ColdChannel`, etc.) and completely rewrites the developer's idiomatic function blocks:
-- **Scheduler Delegation:** *(In progress)* Continues evolving the FSM generation from hardcoded `while(true)` blocks into highly cooperative topologies executing under the `AutumnScheduler` tick abstraction to support cleaner OS interaction boundaries (especially for Android UI threads).
-- **Hardware-Sympathetic Queues:** It binds the unrolled loops directly to pre-allocated `Channel` multiplatform SPSC structures via the `poll()` function, natively injecting thread-aware cache yields when the circuit is dry.
+- **Deterministic Frame Unrolling:** The compiler generates a single deterministic execution frame (a static sequence of `if(poll >= 0) { ... commit() }` evaluations) rather than monolithic `while(true)` spinloops. This allows the host platform (like `AutumnScheduler` or Android's `Choreographer`) to drive the pipeline cooperatively, eliminating thermal throttling and ANRs while preserving A Priori cycle costing.
+- **Hardware-Sympathetic Queues:** It binds the unrolled frames directly to pre-allocated `Channel` multiplatform SPSC structures via the `poll()` function, natively injecting thread-aware cache yields when the circuit is dry.
 - **Topological Thread Binding:** When it detects `@NetworkChannel(sharded = N)`, it injects `AutumnRuntime.spawn` calls, mapping FSM bounds lock-free across `N` physically padded threads.
 
 ### 2. Global Memory Struct Pooling (`@Pipelined` Interception)

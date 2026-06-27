@@ -14,6 +14,7 @@ import java.io.File
 import dev.autumn.annotations.InjectTopology
 
 @InjectTopology
+@LongLived
 fun main() {
     embeddedServer(Netty, port = 8080, host = "0.0.0.0") {
         install(CORS) {

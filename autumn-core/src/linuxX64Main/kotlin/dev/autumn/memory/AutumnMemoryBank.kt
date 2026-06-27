@@ -8,7 +8,7 @@ actual object AutumnMemoryBank {
 
     private var memoryPtr: CPointer<ByteVar>? = null
 
-    actual fun allocate(sizeBytes: Int) {
+    actual fun allocate(sizeBytes: Long) {
         val alignment = 4096UL
         memScoped {
             val memPtr = alloc<CPointerVar<ByteVar>>()

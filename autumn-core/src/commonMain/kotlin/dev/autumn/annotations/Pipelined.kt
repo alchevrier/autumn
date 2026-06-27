@@ -8,4 +8,4 @@ package dev.autumn.annotations
  */
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
-annotation class Pipelined(val capacity: Int)
+annotation class Pipelined

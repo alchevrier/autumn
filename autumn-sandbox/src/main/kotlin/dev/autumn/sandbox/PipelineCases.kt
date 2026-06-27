@@ -10,7 +10,7 @@ import dev.autumn.annotations.ThreadCacheBudget
 import dev.autumn.channel.AutumnChannel
 
 // 1. Automated SoA Generation target
-@Pipelined(capacity = 64)
+@Pipelined
 interface OrderEvent {
     var orderId: Long
     var quantity: Int
@@ -46,11 +46,11 @@ class HighFrequencyTradingNode {
     val marketDataIngress: Any? = null
 
     // ✅ ALLOWED: L1-speed queue passing data between pinned cores 
-    @RegisterChannel(size = 1024)
+    @RegisterChannel
     val coreToCoreQueue: Any? = null
 
     // ✅ ALLOWED: Queue capturing history internally before flushing
-    @RegisterChannel(size = 1024)
+    @RegisterChannel
     val auditLogQueue = AutumnChannel<OrderEvent>(1024)
     
     // ✅ ALLOWED: Background telemetry dropping data to NVMe

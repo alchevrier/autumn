@@ -10,7 +10,7 @@ expect object AutumnMemoryBank {
      * static bounds calculated by the Compiler Plugin during parsing.
      * Guaranteed to perfectly align to hardware page sizes (4096 boundaries bounds).
      */
-    fun allocate(sizeBytes: Int)
+    fun allocate(sizeBytes: Long)
     
     fun getInt(offset: Int): Int
     fun setInt(offset: Int, value: Int)

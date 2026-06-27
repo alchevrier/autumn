@@ -11,7 +11,6 @@ import io.ktor.server.routing.*
 import io.ktor.server.http.content.*
 import java.io.File
 
-@LongLived
 import dev.autumn.annotations.InjectTopology
 
 @InjectTopology

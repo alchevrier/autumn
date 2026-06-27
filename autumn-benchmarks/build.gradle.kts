@@ -38,3 +38,11 @@ val runComparison by tasks.registering(JavaExec::class) {
     classpath = jvmMain.output.allOutputs + jvmMain.runtimeDependencyFiles
     mainClass.set("dev.autumn.benchmark.OrderBookComparisonKt")
 }
+
+tasks.register("printClasspath") {
+    doLast {
+        val jvmMain = kotlin.targets.getByName("jvm").compilations.getByName("main") as org.jetbrains.kotlin.gradle.plugin.mpp.KotlinJvmCompilation
+        val cp = (jvmMain.output.allOutputs + jvmMain.runtimeDependencyFiles).files.joinToString(":")
+        println("CLASSPATH=$cp")
+    }
+}

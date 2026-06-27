@@ -9,16 +9,16 @@ class ChannelTest {
     @Test
     fun `test power of two capacity requirement`() {
         assertFailsWith<IllegalArgumentException> {
-            Channel(10)
+            Channel<Any>(10)
         }
         // Should not fail
-        Channel(16)
-        Channel(1024)
+        Channel<Any>(16)
+        Channel<Any>(1024)
     }
 
     @Test
     fun `test basic offer and poll`() {
-        val buffer = Channel(4)
+        val buffer = Channel<Any>(4)
 
         // Initial state should be empty
         assertEquals(-1, buffer.poll())
@@ -39,7 +39,7 @@ class ChannelTest {
 
     @Test
     fun `test buffer full and wrap around`() {
-        val buffer = Channel(4)
+        val buffer = Channel<Any>(4)
 
         // Fill the buffer
         assertEquals(0, buffer.offer()); buffer.commitOffer()

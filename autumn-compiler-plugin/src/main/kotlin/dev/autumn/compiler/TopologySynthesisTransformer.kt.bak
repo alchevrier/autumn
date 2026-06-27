@@ -136,13 +136,9 @@ class TopologySynthesisTransformer(
                                                     }
                                                     val polledIdx = irTemporary(pollCall, "idx_${channelInfo.name}_$i")
 
-                                                    val yieldFunc = pluginContext.referenceClass(ClassId.topLevel(FqName("java.lang.Thread")))?.owner?.functions?.find { it.name.asString() == "yield" && it.valueParameters.isEmpty() }
-                                                    val anyHandledVar = irTemporary(irFalse(), "anyHandled", isMutable = true)
-                                                    
                                                     val ifNotMinusOne = irIfThen(type = pluginContext.irBuiltIns.unitType,
                                                         condition = irNotEquals(irGet(polledIdx), irInt(-1)),
                                                         thenPart = irBlock {
-                                                            +irSet(anyHandledVar, irTrue())
                                                             val eventType = handler.valueParameters[0].type
                                                             val targetClass = eventType.classOrNull?.owner as? org.jetbrains.kotlin.ir.declarations.IrClass
                                                             val constructor = targetClass?.constructors?.firstOrNull { it.isPrimary }
@@ -159,10 +155,6 @@ class TopologySynthesisTransformer(
                                                         }
                                                     )
                                                     +ifNotMinusOne
-                                                    if (yieldFunc != null) {
-                                                        val notHandled = irCall(pluginContext.irBuiltIns.booleanNotSymbol).apply { dispatchReceiver = irGet(anyHandledVar) }
-                                                        +irIfThen(type = pluginContext.irBuiltIns.unitType, condition = notHandled, thenPart = irCall(yieldFunc.symbol))
-                                                    }
                                                 }
                                             }
                                             +loop
@@ -180,14 +172,9 @@ class TopologySynthesisTransformer(
                                 }
                             } else {
                                 messageCollector.report(CompilerMessageSeverity.INFO, "[Autumn Topology] Injecting single-threaded static native unroll for '${handler.name.asString()}'")
-                                val threadClass = pluginContext.referenceClass(ClassId.topLevel(FqName("java.lang.Thread")))?.owner
-                                val yieldFunc = threadClass?.functions?.find { it.name.asString() == "yield" && it.valueParameters.isEmpty() }
-                                
                                 val loop = irWhile().apply {
                                     condition = irTrue()
                                     body = irBlock {
-                                        val anyHandledVar = irTemporary(irFalse(), "anyHandled", isMutable = true)
-                                        
                                         val chanVal = irTemporary(irCall(propertyGetter))
                                         val pollCall = irCall(pollFunc.symbol).apply { dispatchReceiver = irGet(chanVal) }
                                         val polledIdx = irTemporary(pollCall, "idx")
@@ -195,7 +182,6 @@ class TopologySynthesisTransformer(
                                         val ifNotMinusOne = irIfThen(type = pluginContext.irBuiltIns.unitType,
                                             condition = irNotEquals(irGet(polledIdx), irInt(-1)),
                                             thenPart = irBlock {
-                                                +irSet(anyHandledVar, irTrue())
                                                 val eventType = handler.valueParameters[0].type
                                                 val targetClass = eventType.classOrNull?.owner as? org.jetbrains.kotlin.ir.declarations.IrClass
                                                 val constructor = targetClass?.constructors?.firstOrNull { it.isPrimary }
@@ -209,17 +195,6 @@ class TopologySynthesisTransformer(
                                             }
                                         )
                                         +ifNotMinusOne
-                                        
-                                        if (yieldFunc != null) {
-                                            val notHandled = irCall(pluginContext.irBuiltIns.booleanNotSymbol).apply {
-                                                dispatchReceiver = irGet(anyHandledVar)
-                                            }
-                                            val ifIdle = irIfThen(type = pluginContext.irBuiltIns.unitType,
-                                                condition = notHandled,
-                                                thenPart = irCall(yieldFunc.symbol)
-                                            )
-                                            +ifIdle
-                                        }
                                     }
                                 }
                                 +loop

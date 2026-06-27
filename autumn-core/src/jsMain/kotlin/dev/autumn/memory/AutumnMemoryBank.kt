@@ -7,8 +7,8 @@ actual object AutumnMemoryBank {
     
     private var view: DataView? = null
 
-    actual fun allocate(sizeBytes: Int) {
-        view = DataView(ArrayBuffer(sizeBytes))
+    actual fun allocate(sizeBytes: Long) {
+        view = DataView(ArrayBuffer(sizeBytes.toInt()))
     }
 
     actual fun getInt(offset: Int): Int = view!!.getInt32(offset, true)

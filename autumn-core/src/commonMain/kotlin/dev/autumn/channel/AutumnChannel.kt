@@ -1,28 +1,24 @@
 package dev.autumn.channel
 
-/**
- * The user-facing abstraction representing an isolated hardware-sympathetic queue.
- * 
- * At runtime, the Autumn Compiler Plugin inspects the type parameter [T] (which must be 
- * a `@Pipelined` interface) and dynamically injects the SoA (Structure of Arrays) 
- * backing fields directly alongside this channel's instantiation.
- * 
- * Usage:
- * ```kotlin
- * @ColdChannel
- * val auditLog = AutumnChannel<OrderEvent>(1024)
- * ```
- */
-class AutumnChannel<T>(val capacity: Int) {
-    
-    /**
-     * The purely temporal data wire that orchestrates index allocations 
-     * between execution domains.
-     */
+class AutumnChannel<T>(val capacity: Int) : OffsetAwareChannel {
     val buffer = Channel(capacity)
+    
+    override var globalIndexOffset: Int
+        get() = buffer.globalIndexOffset
+        set(value) {
+            buffer.globalIndexOffset = value
+        }
 
-    // Note: The actual data payload (e.g. IntArray, LongArray) is explicitly NOT held 
-    // here in standard Kotlin generics to avoid boxing. 
-    // The Autumn K2 Compiler structurally generates the arrays at compile-time 
-    // precisely where the AutumnChannel is hoisted.
+    fun poll(): Int = buffer.poll()
+    fun commitPoll(): Unit = buffer.commitPoll()
+    fun pollPartition(partition: Int): Int = buffer.pollPartition(partition)
+    fun commitPollPartition(partition: Int): Unit = buffer.commitPollPartition(partition)
+}
+
+fun setNativeChannelOffset(channel: Any, offset: Int) {
+    if (channel is AutumnChannel<*>) {
+        channel.globalIndexOffset = offset
+    } else if (channel is Channel) {
+        channel.globalIndexOffset = offset
+    }
 }

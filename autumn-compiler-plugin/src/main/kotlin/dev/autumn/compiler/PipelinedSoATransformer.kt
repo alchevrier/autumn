@@ -88,7 +88,12 @@ class PipelinedSoATransformer(
                     
                     val annot = declaration.getAnnotation(targetAnnotation)
                     val capArgument = if (isNet || isReg) annot?.getValueArgument(0) as? IrConst else null
-                    val channelCapacity = (capArgument?.value as? Int) ?: 1024
+                    val baseCapacity = 16777216
+                    
+                    val shardedArg = annot?.getValueArgument(2) as? IrConst
+                    val shardedCount = (shardedArg?.value as? Int) ?: 1
+                    
+                    val channelCapacity = baseCapacity * shardedCount
 
                     val simpleType = declaration.backingField?.type as? IrSimpleType
                     val boundStructClass = simpleType?.arguments?.firstOrNull()?.typeOrNull?.classOrNull?.owner
@@ -118,6 +123,7 @@ class PipelinedSoATransformer(
         }, null)
 
         var currentGlobalPartitionOffset = 0
+
         
         for ((className, totalCapacity) in structTotalCapacities) {
             val boundStructClass = pipelinedClasses[className] ?: continue
@@ -142,6 +148,7 @@ class PipelinedSoATransformer(
                     localSoAOffsets[propertyName] = currentGlobalPartitionOffset
                     byteSizes[propertyName] = byteSize
                     totalStructBytes += byteSize
+                    println("LAYOUT_OUTPUT: $className.$propertyName offset=$currentGlobalPartitionOffset size=$byteSize")
                     currentGlobalPartitionOffset += (byteSize * totalCapacity) 
                 }
             }
@@ -151,6 +158,7 @@ class PipelinedSoATransformer(
 
             var totalSoABytes = totalStructBytes * totalCapacity
             var alignedSoABytes = totalSoABytes
+            
             if (alignedSoABytes > 0 && (alignedSoABytes and (alignedSoABytes - 1)) != 0) {
                 var n = alignedSoABytes - 1
                 n = n.or(n.ushr(1))
@@ -179,32 +187,59 @@ class PipelinedSoATransformer(
             val offset = channelIndexOffsets[declaration.name.asString()]
             val originalInitializer = declaration.backingField?.initializer?.expression
 
+            
             if (offset != null && originalInitializer != null) {
+
+                println("============ DEBUG TYPES ============")
+                println("Type classFqName: " + originalInitializer.type.classFqName?.asString())
+                println("Type dump: " + originalInitializer.type.toString())
+                println("Expression dump: " + originalInitializer.toString())
+                println("=====================================")
                 val autumnChannelClass = pluginContext.referenceClass(ClassId.topLevel(FqName("dev.autumn.channel.AutumnChannel")))
-                val spscRingBufferClass = pluginContext.referenceClass(ClassId.topLevel(FqName("dev.autumn.channel.SPSCRingBuffer")))
+                val rawChannelClass = pluginContext.referenceClass(ClassId.topLevel(FqName("dev.autumn.channel.Channel")))
                 
-                val bufferGetter = autumnChannelClass?.owner?.properties?.find { it.name.asString() == "buffer" }?.getter
-                val globalIndexOffsetSetter = spscRingBufferClass?.owner?.properties?.find { it.name.asString() == "globalIndexOffset" }?.setter
                 
-                if (bufferGetter != null && globalIndexOffsetSetter != null) {
+                                val setNativeChannelOffsetFunc = pluginContext.referenceFunctions(org.jetbrains.kotlin.name.CallableId(org.jetbrains.kotlin.name.FqName("dev.autumn.channel"), org.jetbrains.kotlin.name.Name.identifier("setNativeChannelOffset"))).firstOrNull()
+                val initPartitionsFunc = pluginContext.referenceFunctions(org.jetbrains.kotlin.name.CallableId(org.jetbrains.kotlin.name.FqName("dev.autumn.channel.Channel"), org.jetbrains.kotlin.name.Name.identifier("initPartitions"))).firstOrNull()?.owner
+                val bufferGetter = autumnChannelClass?.owner?.properties?.find { it.name.asString() == "buffer" || it.name.asString() == "getBuffer" || it.name.asString() == "<get-buffer>" }?.getter
+                    ?: autumnChannelClass?.owner?.functions?.find { it.name.asString() == "getBuffer" || it.name.asString() == "<get-buffer>" }
+
+                messageCollector.report(org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.WARNING, "======> COMPILER DIAGNOSTIC <=======")
+                messageCollector.report(org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.WARNING, "bufferGetter present: ${bufferGetter != null}")
+                messageCollector.report(org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.WARNING, "isAutumnType: ${originalInitializer.type.classFqName?.asString()?.contains("AutumnChannel") == true}")
+
+
+
+                // Read the sharded count
+                val annot = declaration.annotations.firstOrNull { it.type.classFqName?.asString()?.endsWith("Channel") == true }
+                val shardedArg = annot?.getValueArgument(2) as? IrConst
+                val shardedCount = (shardedArg?.value as? Int) ?: 1
+
+                if (setNativeChannelOffsetFunc != null) {
+
                     val builder = DeclarationIrBuilder(pluginContext, declaration.symbol)
                     
                     declaration.backingField?.initializer?.expression = builder.irBlock(resultType = originalInitializer.type) {
                         val tempVar = irTemporary(originalInitializer)
+
+                        val bufferExpr = irGet(tempVar)
                         
-                        val bufferGetCall = irCall(bufferGetter.symbol).apply {
-                            dispatchReceiver = irGet(tempVar)
+                        if (shardedCount > 1 && initPartitionsFunc != null) {
+                            val initCall = irCall(initPartitionsFunc.symbol).apply {
+                                dispatchReceiver = bufferExpr
+                                putValueArgument(0, irInt(shardedCount))
+                            }
+                            +initCall
                         }
-                        
-                        val setOffsetCall = irCall(globalIndexOffsetSetter.symbol).apply {
-                            dispatchReceiver = bufferGetCall
-                            putValueArgument(0, irInt(offset))
+
+                        val setOffsetCall = irCall(setNativeChannelOffsetFunc).apply {
+                            putValueArgument(0, irGet(tempVar))
+                            putValueArgument(1, irInt(offset))
                         }
                         
                         +setOffsetCall
                         +irGet(tempVar)
                     }
-                    
                     messageCollector.report(
                         CompilerMessageSeverity.INFO,
                         "[Autumn HLS] Injected native IR block mapping Channel '${declaration.name.asString()}' buffer offset to $offset"
@@ -217,11 +252,53 @@ class PipelinedSoATransformer(
 
     override fun visitCall(expression: IrCall): org.jetbrains.kotlin.ir.expressions.IrExpression {
         val function = expression.symbol.owner
-        val parentClass = function.parent as? IrClass
+        val parentClass = function.parent as? org.jetbrains.kotlin.ir.declarations.IrClass
+        val functionName = function.name.asString()
+        
+        if (function.name.asString() == "next") {
+            
+        }
+        if (functionName == "next" && parentClass?.name?.asString() == "Channel") {
+            val offerFunc = parentClass.functions.find { it.name.asString() == "nextIndex" }
+            
+            if (offerFunc != null) {
+                messageCollector.report(
+                    CompilerMessageSeverity.INFO,
+                    "[Autumn API] Intercepted 'Channel.next<T>()' -> translating to bounded SoA 'offer()'"
+                )
+                val builder = DeclarationIrBuilder(pluginContext, expression.symbol)
+                val offerCall = builder.irCall(offerFunc.symbol).apply {
+                    dispatchReceiver = expression.dispatchReceiver
+                    putValueArgument(0, expression.getValueArgument(0))
+                }
+                
+                val targetClass = expression.type.classOrNull?.owner as? IrClass
+                if (targetClass != null && targetClass.isValue) {
+                    val constructor = targetClass.constructors.firstOrNull { it.isPrimary }
+                    if (constructor != null) {
+                        return builder.irCall(constructor.symbol).apply {
+                            putValueArgument(0, offerCall)
+                        }
+                    }
+                }
+                return offerCall
+            }
+        } else if (functionName == "commitNext" && parentClass?.name?.asString() == "Channel") {
+            val commitOfferFunc = parentClass.functions.find { it.name.asString() == "commitNextIndex" }
+            if (commitOfferFunc != null) {
+                messageCollector.report(
+                    CompilerMessageSeverity.INFO,
+                    "[Autumn API] Intercepted 'Channel.commitNext()' -> translating to 'commitOffer()'"
+                )
+                val builder = DeclarationIrBuilder(pluginContext, expression.symbol)
+                return builder.irCall(commitOfferFunc.symbol).apply {
+                    dispatchReceiver = expression.dispatchReceiver
+                    putValueArgument(0, expression.getValueArgument(0))
+                }
+            }
+        }
 
-        val implementsPipelined = parentClass?.superTypes?.any { 
-            it.classFqName == PIPELINED_FQ_NAME || it.classFqName?.asString()?.endsWith("OrderEvent") == true
-        } == true
+        val implementsPipelined = parentClass?.hasAnnotation(PIPELINED_FQ_NAME) == true
         
         if (implementsPipelined) {
             val isGetter = function.name.asString().startsWith("<get-")
@@ -230,9 +307,7 @@ class PipelinedSoATransformer(
             
             val className = parentClass?.name?.asString() ?: return super.visitCall(expression)
             
-            // The class might be a Flyweight (e.g. OrderEventFlyweight), so check if its interface is in the map
             val targetClassName = propertyLocalSoAByteOffsets.keys.find { it == className || className.startsWith(it) } ?: return super.visitCall(expression)
-            
             val offsetMap = propertyLocalSoAByteOffsets[targetClassName] ?: return super.visitCall(expression)
             val propertyBaseOffset = offsetMap[propertyName]
             
@@ -259,8 +334,6 @@ class PipelinedSoATransformer(
                 val builder = DeclarationIrBuilder(pluginContext, expression.symbol)
                 
                 val idxExpr = if (isInterface) {
-                    // Signature Assassination occurred: The receiver is heavily erased to an Int by TopologySynthesisTransformer!
-                    // Just use the receiver directly (it will be bounds-loaded as an integer parameter).
                     expression.dispatchReceiver!!
                 } else {
                     val indexProperty = parentClass.properties.find { it.name.asString() == "index" } ?: return super.visitCall(expression)
@@ -283,11 +356,6 @@ class PipelinedSoATransformer(
                 if (isGetter) {
                     val getterFunc = memoryBankClass.functions.find { it.name.asString() == "get$typeSuffix" } ?: return super.visitCall(expression)
                     
-                    messageCollector.report(
-                        CompilerMessageSeverity.INFO,
-                        "[Autumn HLS] Rewrote Getter: ${className}.${propertyName} -> AutumnMemoryBank.get$typeSuffix($propertyBaseOffset + (index * $propertyByteSize))"
-                    )
-                    
                     return builder.irCall(getterFunc.symbol).apply {
                         dispatchReceiver = builder.irGetObject(memoryBankClass.symbol)
                         putValueArgument(0, addressExpr)
@@ -295,11 +363,6 @@ class PipelinedSoATransformer(
                 } else if (isSetter) {
                     val setterFunc = memoryBankClass.functions.find { it.name.asString() == "set$typeSuffix" } ?: return super.visitCall(expression)
                     val valueToSet = expression.getValueArgument(0) ?: return super.visitCall(expression)
-                    
-                    messageCollector.report(
-                        CompilerMessageSeverity.INFO,
-                        "[Autumn HLS] Rewrote Setter: ${className}.${propertyName} = value -> AutumnMemoryBank.set$typeSuffix($propertyBaseOffset + (index * $propertyByteSize), value)"
-                    )
                     
                     return builder.irCall(setterFunc.symbol).apply {
                         dispatchReceiver = builder.irGetObject(memoryBankClass.symbol)

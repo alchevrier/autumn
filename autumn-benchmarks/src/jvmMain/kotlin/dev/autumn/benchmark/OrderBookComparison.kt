@@ -6,7 +6,7 @@ import dev.autumn.memory.AutumnMemoryBank
 import kotlin.system.measureNanoTime
 import kotlin.system.exitProcess
 
-const val MESSAGE_COUNT = 10_000_000
+const val MESSAGE_COUNT = 1_000_000
 
 // =========================================================================
 // 1. CLASSIC MANUAL SOA + PINNED LOOP
@@ -16,9 +16,9 @@ class ClassicOrderBook {
     private val TICK_LEVELS = 10_000 
     private val MAX_ORDERS_PER_LEVEL = 64 
 
-    private val levelOrderRefs = LongArray(TICK_LEVELS * MAX_ORDERS_PER_LEVEL)
-    private val levelOrderShares = IntArray(TICK_LEVELS * MAX_ORDERS_PER_LEVEL)
-    private val levelDepthCounters = IntArray(TICK_LEVELS)
+    val levelOrderRefs = LongArray(TICK_LEVELS * MAX_ORDERS_PER_LEVEL)
+    val levelOrderShares = IntArray(TICK_LEVELS * MAX_ORDERS_PER_LEVEL)
+    val levelDepthCounters = IntArray(TICK_LEVELS)
 
     val channelRefs = LongArray(MESSAGE_COUNT)
     val channelShares = IntArray(MESSAGE_COUNT)
@@ -61,12 +61,13 @@ class ClassicOrderBook {
 // 2. AUTUMN COMPILER PIPELINE SETUP
 // =========================================================================
 
-@Pipelined(capacity = MESSAGE_COUNT)
+@Pipelined
 @JvmInline
 value class OrderEvent(val index: Int) {
-    val ref: Long get() = 0L
-    val shares: Int get() = 0
-    val price: Int get() = 0
+    // Currently manually mapping to the MemoryBank natively since K2 reflection overrides are disabled
+    val ref: Long get() = dev.autumn.memory.AutumnMemoryBank.getLong((67108864L + (index * 8)).toInt())
+    val shares: Int get() = dev.autumn.memory.AutumnMemoryBank.getInt((201326592L + (index * 4)).toInt())
+    val price: Int get() = dev.autumn.memory.AutumnMemoryBank.getInt((268435456L + (index * 4)).toInt())
 }
 
 private val TICK_LEVELS = 10_000 
@@ -81,7 +82,7 @@ var levelDepthCounters = IntArray(TICK_LEVELS)
 
 @LongLived
 @NetworkChannel(capacity = 16777216, weight = 100)
-val inboundNetwork = Channel(16777216)
+val inboundNetwork = dev.autumn.channel.AutumnChannel<OrderEvent>(16777216)
 
 var startTime = 0L
 
@@ -103,6 +104,27 @@ fun onInboundNetwork(idx: Int) {
         val endTime = System.nanoTime()
         val nanos = endTime - startTime
         println("[Autumn] Pipelined SoA + Arbiter Loop Time: ${nanos / 1_000_000} ms")
+
+        var isCorrect = true
+        val c = classicInstance!!
+        for (i in levelDepthCounters.indices) {
+            if (levelDepthCounters[i] != c.levelDepthCounters[i]) { 
+                println("Mismatch depth at $i: Autumn=${levelDepthCounters[i]} Classic=${c.levelDepthCounters[i]}")
+                isCorrect = false
+            }
+        }
+        if (isCorrect) {
+            for (i in levelOrderRefs.indices) {
+                if (levelOrderRefs[i] != c.levelOrderRefs[i] || levelOrderShares[i] != c.levelOrderShares[i]) {
+                    println("Mismatch data at $i: AutumnRef=${levelOrderRefs[i]} ClassicRef=${c.levelOrderRefs[i]}")
+                    isCorrect = false
+                    break
+                }
+            }
+        }
+        if (isCorrect) println("[Autumn] Correctness Verified: TRUE")
+        else println("[Autumn] Correctness Verified: FALSE (Mismatch detected!)")
+        
         exitProcess(0)
     }
 }
@@ -111,23 +133,33 @@ fun onInboundNetwork(idx: Int) {
 fun bootstrapAutumnPipeline() {
     println("\n--- Executing JVM Compiler-Rewritten Topology ---")
     // Simulate NIC filling the buffer into the memory bank
-    AutumnMemoryBank.allocate(16777216 * 16)
-    for (i in 0 until MESSAGE_COUNT) {
-        val idx = inboundNetwork.offer()
-        val baseOffset = (idx * 16) // 8 for ref, 4 for int, 4 for price
-        AutumnMemoryBank.setLong(baseOffset, i.toLong()) // ref
-        AutumnMemoryBank.setInt(baseOffset + 8, 100) // shares
-        AutumnMemoryBank.setInt(baseOffset + 12, (i % 500) + 5000) // price
-        inboundNetwork.commitOffer()
-    }
-    
+    AutumnMemoryBank.allocate(16777216 * 20)
     startTime = System.nanoTime()
+    
+    // Instead of prefilling 10M, we stream 1M individually into the pipeline 
+    // to measure how fast the loop picks them up! 
+    Thread {
+        for (i in 0 until MESSAGE_COUNT) {
+            var idx = inboundNetwork.buffer.offer()
+            while (idx == -1) { 
+                Thread.yield() // wait for queue space
+                idx = inboundNetwork.buffer.offer()
+            }
+            AutumnMemoryBank.setLong((67108864L + (idx * 8L)).toInt(), i.toLong()) 
+            AutumnMemoryBank.setInt((201326592L + (idx * 4L)).toInt(), 100) 
+            AutumnMemoryBank.setInt((268435456L + (idx * 4L)).toInt(), (i % 500) + 5000) 
+            inboundNetwork.buffer.commitOffer()
+        }
+    }.start()
     // [The Plugin natively unrolls the Arbiter schedule here]
 }
+
+var classicInstance: ClassicOrderBook? = null
 
 @LongLived
 fun main() {
     val classic = ClassicOrderBook()
+    classicInstance = classic
     classic.setup()
     println("--- Executing Classic Manual Benchmark ---")
     classic.run()

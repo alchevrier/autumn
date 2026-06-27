@@ -147,6 +147,7 @@ Architectural decisions live in [`docs/adr/`](docs/adr) and capture the initial 
 - ADR-0018 — AF_XDP Zero Copy Ingress
 - ADR-0019 — K2 Compiler IR Injection for Global Struct Pooling
 - ADR-0020 — Channel-Driven Dataflow Execution
+- ADR-0021 — Clock-Aware Execution Scheduling
 
 ## Integration example (Server / HFT Pipeline)
 

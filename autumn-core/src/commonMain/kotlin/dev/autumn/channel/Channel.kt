@@ -1,15 +1,22 @@
 package dev.autumn.channel
 
-class Channel(val capacity: Int) : OffsetAwareChannel {
+// JVM avoids rearranging fields across class inheritance boundaries, 
+// so this hierarchy guarantees physical 64-byte spacing between cache trackers.
+abstract class ChannelPad1 { var p01=0L; var p02=0L; var p03=0L; var p04=0L; var p05=0L; var p06=0L; var p07=0L; var p08=0L }
+abstract class ChannelProducer : ChannelPad1() {
+    var producerReadCache = 0L
+    var producerWriteIndex = 0L
+}
+abstract class ChannelPad2 : ChannelProducer() { var p11=0L; var p12=0L; var p13=0L; var p14=0L; var p15=0L; var p16=0L; var p17=0L; var p18=0L }
+abstract class ChannelConsumer : ChannelPad2() {
+    var consumerWriteCache = 0L
+    var consumerReadIndex = 0L
+}
+abstract class ChannelPad3 : ChannelConsumer() { var p21=0L; var p22=0L; var p23=0L; var p24=0L; var p25=0L; var p26=0L; var p27=0L; var p28=0L }
+
+class Channel(val capacity: Int) : ChannelPad3(), OffsetAwareChannel {
     val readSequence = HardwareSequence()
     val writeSequence = HardwareSequence()
-    
-    // Thread-local caches to prevent false sharing and cross-thread mutation
-    private var producerReadCache = 0L
-    private var producerWriteIndex = 0L
-    
-    private var consumerWriteCache = 0L
-    private var consumerReadIndex = 0L
     
     override var globalIndexOffset: Int = 0
 

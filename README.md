@@ -148,7 +148,47 @@ Architectural decisions live in [`docs/adr/`](docs/adr) and capture the initial 
 - ADR-0019 — K2 Compiler IR Injection for Global Struct Pooling
 - ADR-0020 — Channel-Driven Dataflow Execution
 
-## Integration example (Jetpack Compose)
+## Integration example (Server / HFT Pipeline)
+
+Autumn turns idiomatic Kotlin into locked-down DPDK-tier pipelines. You define the shape of the data and the channel, and the K2 compiler synthesizes the execution polling loops and pointer math statically.
+
+```kotlin
+// 1. Define a Flyweight struct
+// This generates no objects; 'index' simply maps into the globally allocated AutumnMemoryBank
+@Pipelined
+@JvmInline
+value class OrderEvent(val index: Int) {
+    val ref: Long get() = AutumnMemoryBank.getLong(67108864L + (index * 8))
+    val price: Int get() = AutumnMemoryBank.getInt(268435456L + (index * 4))
+}
+
+// 2. Declare a hardware-sympathetic SPSC ring buffer
+// Mathematically padded against false-sharing L1 CPU cache lines
+@LongLived
+@NetworkChannel(capacity = 16777216, sharded = 4)
+val inboundNetwork = AutumnChannel<OrderEvent>(16777216)
+
+// 3. Define the Hot Loop
+// The @LongLived handler is intercepted by K2, unrolling it into a flat while(true) block 
+// tracking the thread-local indices without GC boundaries or OS context switching.
+@LongLived
+fun onInboundNetwork(idx: Int) {
+    val event = OrderEvent(idx) // Zero allocation
+    
+    // Direct primitive array routing (OrderBook SoA logic)
+    val baseOffset = event.price * MAX_ORDERS
+    levelOrderRefs[baseOffset + depth] = event.ref
+}
+
+// 4. Synthesize the Topology
+@InjectTopology
+fun startServer() {
+    // The Compiler natively injects multi-core FSM FSM polling loops here, 
+    // pulling bytes directly off the NIC and routing across L1-padded rings.
+}
+```
+
+## Integration example (Jetpack Compose / Mobile)
 
 Autumn bypasses standard object allocation by replacing DTO flows with an emulated hardware interrupt wire. Here is how you bind Autumn to a Compose UI:
 

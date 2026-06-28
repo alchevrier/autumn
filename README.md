@@ -48,6 +48,7 @@ Autumn effectively acts as a hardware description language that compiles nativel
 - `autumn-config` — zero-allocation payload string registry and hardware matrix limit calculator (`JsonConfigParser`).
 - `autumn-ui` — native rendering bridge linking platform Canvas text exactly to byte indices (`AutumnCircuitBinder`, `AutumnMotherboard`).
 - `autumn-benchmarks` — bare-metal algorithmic latency analysis proving sub-microsecond throughput (e.g. ITCH 5.0 Order Books).
+- `autumn-observatory` — zero-allocation telemetry tracking hardware ticks seamlessly via compiler-injected cold channels.
 
 ## Architecture
 
@@ -162,6 +163,10 @@ A companion IntelliJ plugin will map this data back onto the source code, creati
 - **Inline Hardware Telemetry:** See gray `[24 bytes | 3% L1 Cache]` CodeLens hints sitting directly above your `@Pipelined` structs. 
 - **Cycle Costing Feedback:** Hover over a `tick()` handler and see exactly how many ALU CPU cycles the compiler mathematically predicts the frame will cost. 
 - **Pre-emptive Squiggles:** Automatically red-underline a new class property if it crosses the strictly enforced `@ThreadCacheBudget` capacity boundary *before* you run the gradle build.
+
+### Zero-Allocation Telemetry (`autumn-observatory`)
+Standard APM agents and profilers destroy latency by allocating objects and issuing locking system calls. Future integration will allow developers to annotate any handler with `@Observe("MetricName")`.
+The Autumn compiler will automatically weave hardware clock instructions (`NativeClock.rdtsc()`) around the function and fire-and-forget the raw execution cycles into a background `@ColdChannel`. This allows a separate thread (or processor) to calculate exact production P99s completely out-of-band without disturbing the sub-microsecond hot path.
 
 ## Integration example (Server / HFT Pipeline)
 

@@ -1,4 +1,4 @@
-# ADR 0008: IDE Performance Center and Topology Visualization
+# ADR 0024: IDE Performance Center and Topology Visualization
 
 ## Status
 Proposed
@@ -24,6 +24,11 @@ We will construct an `autumn-ide-plugin` (targeting IntelliJ / Kotlin Language S
    A dedicated "Autumn Performance Center" tool window will graph the dataflow topology of the entire module. Since standard object graphs and pointers don't exist under Autumn's SoA memory map, developers need visibility into the structural data routing.
    - The plugin will visually map the pipeline: `<BoundaryChannel>` → `@Observe` (Handler A) → `<ColdChannel>` → `@Observe` (Handler B).
    - Right-clicking an `@Observe` function will allow the developer to instantly trace upstream to the specific channel source triggering it, circumventing standard "Find Usages" blind spots inherently present when frameworks abstract routing dynamically.
+
+4. **Execution Port Simulator (ILP Pressure Analysis):**
+   Providing raw cycle counts exposes temporal depth, but hardware executes superscalar streams.
+   - The plugin will simulate instruction-level parallelism (similar to LLVM Machine Code Analyzer `llvm-mca`) against the projected native translation.
+   - It will map the IR down to execution port usage (e.g., ALU vs. AGU utilization), highlighting if a pipeline is bottlenecked on instruction ports while others sit idle natively, thereby guiding the developer towards loop-unrolling or spatial layout adjustments.
 
 ## Rationale
 - **The FPGA Hardware Model:** Building deterministic systems requires developers to view their logic conceptually as circuits constrained natively by physical limits. By elevating cycles and L1 cache sizes to the status of IDE syntax errors, developers are forced to think spatially.

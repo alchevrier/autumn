@@ -90,7 +90,7 @@ class DemoCircuitBinder(
 @LongLived
 val motherboard = AutumnMotherboard(
     networkClient = WasmFetchNetworkClient(),
-    stringRegistryBudget = 0,
+    stringRegistryBudget = 1000,
     concurrencyBudget = 4,
     epochMatrixBudget = 2,
     configBucketsBudget = 100

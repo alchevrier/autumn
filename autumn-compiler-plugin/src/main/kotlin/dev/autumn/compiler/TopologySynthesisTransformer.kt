@@ -28,6 +28,7 @@ class TopologySynthesisTransformer(
     private val BOUNDARY_CHANNEL_FQ = FqName("dev.autumn.annotations.BoundaryChannel")
     private val COLD_CHANNEL_FQ = FqName("dev.autumn.annotations.ColdChannel")
     private val SESSION_CHANNEL_FQ = FqName("dev.autumn.annotations.SessionChannel")
+    private val SPECULATIVE_FQ = FqName("dev.autumn.annotations.Speculative")
     private val REGISTER_CHANNEL_FQ = FqName("dev.autumn.annotations.RegisterChannel")
 
     data class ChannelTopologyInfo(
@@ -181,22 +182,76 @@ class TopologySynthesisTransformer(
                                 val pollCall = irCall(pollFunc.symbol).apply { dispatchReceiver = irGet(chanVal) }
                                 val polledIdx = irTemporary(pollCall, "idx")
 
-                                val ifNotMinusOne = irIfThen(type = pluginContext.irBuiltIns.unitType,
-                                    condition = irNotEquals(irGet(polledIdx), irInt(-1)),
-                                    thenPart = irBlock {
+                                val specAnnot = channelInfo.property.getAnnotation(SPECULATIVE_FQ)
+                                val burstWindow = if (specAnnot != null) {
+                                    val arg = specAnnot.getValueArgument(0) as? IrConst
+                                    (arg?.value as? Int) ?: 200
+                                } else 1
+
+                                if (burstWindow > 1) {
+                                    messageCollector.report(CompilerMessageSeverity.INFO, "[Autumn Topology] Synthesizing speculative burst loop (window=$burstWindow) for '${channelInfo.property.name.asString()}'")
+                                    val burstsVar = irTemporary(irInt(0), "bursts", isMutable = true)
+                                    val whileLoop = org.jetbrains.kotlin.ir.expressions.impl.IrWhileLoopImpl(-1, -1, pluginContext.irBuiltIns.unitType, org.jetbrains.kotlin.ir.expressions.IrStatementOrigin.WHILE_LOOP)
+                                    
+                                    val lessFun = pluginContext.irBuiltIns.lessFunByOperandType[pluginContext.irBuiltIns.intClass]!!
+                                    whileLoop.condition = irCall(lessFun).apply {
+                                        putValueArgument(0, irGet(burstsVar))
+                                        putValueArgument(1, irInt(burstWindow))
+                                    }
+                                    
+                                    whileLoop.body = irBlock {
+                                        val pollCallLoop = irCall(pollFunc.symbol).apply { dispatchReceiver = irGet(chanVal) }
+                                        val polledIdxLoop = irTemporary(pollCallLoop, "idx")
+                                        
+                                        +irIfThen(type = pluginContext.irBuiltIns.unitType,
+                                            condition = irEquals(irGet(polledIdxLoop), irInt(-1)),
+                                            thenPart = irBreak(whileLoop)
+                                        )
+                                        
                                         val eventType = handler.valueParameters[0].type
                                         val targetClass = eventType.classOrNull?.owner as? org.jetbrains.kotlin.ir.declarations.IrClass
                                         val constructor = targetClass?.constructors?.firstOrNull { it.isPrimary }
                                         val arg = if (constructor != null) {
-                                            irCall(constructor.symbol).apply { putValueArgument(0, irGet(polledIdx)) }
+                                            irCall(constructor.symbol).apply { putValueArgument(0, irGet(polledIdxLoop)) }
                                         } else {
-                                            irGet(polledIdx)
+                                            irGet(polledIdxLoop)
                                         }
                                         +irCall(handler.symbol).apply { putValueArgument(0, arg) }
                                         +irCall(commitPollFunc.symbol).apply { dispatchReceiver = irGet(chanVal) }
+                                        
+                                        val intPlus = pluginContext.irBuiltIns.intClass.owner.functions.find { it.name.asString() == "plus" && it.valueParameters[0].type == pluginContext.irBuiltIns.intType }?.symbol
+                                        if (intPlus != null) {
+                                            +irSet(burstsVar, irCall(intPlus).apply {
+                                                dispatchReceiver = irGet(burstsVar)
+                                                putValueArgument(0, irInt(1))
+                                            })
+                                        }
+                                        // To increment in IR without finding Int.plus, we can just use inc() or build it:
+                                        // Oh wait, `bursts = bursts + 1` isn't strictly necessary if I just use a simple `poll` until -1 limit, 
+                                        // OR just find the correct Plus symbol. K2 provides `pluginContext.irBuiltIns.intClass`
+                                        // Wait, the safest way is not to count bursts natively in IR if it's too complex... wait no, we need to limit to burstWindow!
+                                        // Let's find Int.plus correctly or use an endless while and a break when reaching the window...
+                                        // Actually `irWhile(condition)` works natively with `irEquals(irCall(lessFun...))`
                                     }
-                                )
-                                +ifNotMinusOne
+                                    +whileLoop
+                                } else {
+                                    val ifNotMinusOne = irIfThen(type = pluginContext.irBuiltIns.unitType,
+                                        condition = irNotEquals(irGet(polledIdx), irInt(-1)),
+                                        thenPart = irBlock {
+                                            val eventType = handler.valueParameters[0].type
+                                            val targetClass = eventType.classOrNull?.owner as? org.jetbrains.kotlin.ir.declarations.IrClass
+                                            val constructor = targetClass?.constructors?.firstOrNull { it.isPrimary }
+                                            val arg = if (constructor != null) {
+                                                irCall(constructor.symbol).apply { putValueArgument(0, irGet(polledIdx)) }
+                                            } else {
+                                                irGet(polledIdx)
+                                            }
+                                            +irCall(handler.symbol).apply { putValueArgument(0, arg) }
+                                            +irCall(commitPollFunc.symbol).apply { dispatchReceiver = irGet(chanVal) }
+                                        }
+                                    )
+                                    +ifNotMinusOne
+                                }
                             }
                         }
                     }

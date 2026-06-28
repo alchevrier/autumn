@@ -6,6 +6,11 @@ plugins {
 kotlin {
     jvm {
     }
+    wasmJs {
+        browser {
+            binaries.executable()
+        }
+    }
     js(IR) {
         browser {
             binaries.executable()
@@ -47,4 +52,13 @@ val runDemoServer by tasks.registering(JavaExec::class) {
     dependsOn(tasks.named("jsBrowserDistribution"))
     val jsBrowserDistribution = tasks.named("jsBrowserDistribution").get()
     environment("AUTUMN_DEMO_WEB_DIR", jsBrowserDistribution.outputs.files.singleFile.absolutePath)
+}
+val runDemoWasmServer by tasks.registering(JavaExec::class) {
+    val jvmMain = kotlin.targets.getByName("jvm").compilations.getByName("main") as org.jetbrains.kotlin.gradle.plugin.mpp.KotlinJvmCompilation
+    classpath = jvmMain.output.allOutputs + jvmMain.runtimeDependencyFiles
+    mainClass.set("dev.autumn.demo.server.ServerKt")
+    
+    dependsOn(tasks.named("wasmJsBrowserDistribution"))
+    val wasmJsBrowserDistribution = tasks.named("wasmJsBrowserDistribution").get()
+    environment("AUTUMN_DEMO_WEB_DIR", wasmJsBrowserDistribution.outputs.files.singleFile.absolutePath)
 }

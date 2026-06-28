@@ -93,11 +93,12 @@ var levelDepthCounters = IntArray(TICK_LEVELS)
 val inboundNetwork = dev.autumn.channel.AutumnChannel<OrderEvent>(16777216)
 
 @LongLived
+@ObserveChannel("networkTelemetry")
 val metricsHistogram = LatencyHistogram(baseOffset = 16777216 * 15, capacity = MESSAGE_COUNT)
 
 var startTime = 0L
 
-@Observe
+@Observe("networkTelemetry")
 @LongLived
 fun onInboundNetwork(idx: Int) {
     val event = OrderEvent(idx)

@@ -155,7 +155,12 @@ class TopologySynthesisTransformer(
                                     }
 
                                     // Telemetry weave
-                                    val hasObserve = handler.hasAnnotation(FqName("dev.autumn.annotations.Observe"))
+                                    val observeAnnotation = handler.getAnnotation(FqName("dev.autumn.annotations.Observe"))
+                                    val hasObserve = observeAnnotation != null
+                                    
+                                    val observerNameArg = observeAnnotation?.getValueArgument(0) as? IrConst
+                                    val targetObserverName = (observerNameArg?.value as? String) ?: "metricsHistogram"
+                                    
                                     val clockClass = pluginContext.referenceClass(ClassId.topLevel(FqName("dev.autumn.scheduler.AutumnClock")))?.owner
                                     val nowFunc = clockClass?.functions?.firstOrNull { it.name.asString() == "now" }
                                     val histogramClass = pluginContext.referenceClass(ClassId.topLevel(FqName("dev.autumn.observatory.LatencyHistogram")))?.owner
@@ -163,7 +168,15 @@ class TopologySynthesisTransformer(
                                     
                                     var targetHistogram: IrProperty? = null
                                     declaration.file.declarations.forEach {
-                                        if (it is IrProperty && it.name.asString().contains("Histogram")) {
+                                        if (it is IrProperty && it.hasAnnotation(FqName("dev.autumn.annotations.ObserveChannel"))) {
+                                            val chanAnnot = it.getAnnotation(FqName("dev.autumn.annotations.ObserveChannel"))
+                                            val chanArg = chanAnnot?.getValueArgument(0) as? IrConst
+                                            val chanName = (chanArg?.value as? String) ?: "metricsHistogram"
+                                            if (chanName == targetObserverName || it.name.asString() == targetObserverName) {
+                                                targetHistogram = it
+                                            }
+                                        } else if (it is IrProperty && it.name.asString() == targetObserverName) {
+                                            // Fallback to exactly matching the property name if the user forgot the annotation
                                             targetHistogram = it
                                         }
                                     }
@@ -259,7 +272,12 @@ class TopologySynthesisTransformer(
                                         }
 
                                         // Telemetry weave
-                                        val hasObserve = handler.hasAnnotation(FqName("dev.autumn.annotations.Observe"))
+                                        val observeAnnotation = handler.getAnnotation(FqName("dev.autumn.annotations.Observe"))
+                                        val hasObserve = observeAnnotation != null
+                                        
+                                        val observerNameArg = observeAnnotation?.getValueArgument(0) as? IrConst
+                                        val targetObserverName = (observerNameArg?.value as? String) ?: "metricsHistogram"
+
                                         val clockClass = pluginContext.referenceClass(ClassId.topLevel(FqName("dev.autumn.scheduler.AutumnClock")))?.owner
                                         val nowFunc = clockClass?.functions?.firstOrNull { it.name.asString() == "now" }
                                         val histogramClass = pluginContext.referenceClass(ClassId.topLevel(FqName("dev.autumn.observatory.LatencyHistogram")))?.owner
@@ -267,7 +285,14 @@ class TopologySynthesisTransformer(
                                         
                                         var targetHistogram: IrProperty? = null
                                         declaration.file.declarations.forEach {
-                                            if (it is IrProperty && it.name.asString().contains("Histogram")) {
+                                            if (it is IrProperty && it.hasAnnotation(FqName("dev.autumn.annotations.ObserveChannel"))) {
+                                                val chanAnnot = it.getAnnotation(FqName("dev.autumn.annotations.ObserveChannel"))
+                                                val chanArg = chanAnnot?.getValueArgument(0) as? IrConst
+                                                val chanName = (chanArg?.value as? String) ?: "metricsHistogram"
+                                                if (chanName == targetObserverName || it.name.asString() == targetObserverName) {
+                                                    targetHistogram = it
+                                                }
+                                            } else if (it is IrProperty && it.name.asString() == targetObserverName) {
                                                 targetHistogram = it
                                             }
                                         }

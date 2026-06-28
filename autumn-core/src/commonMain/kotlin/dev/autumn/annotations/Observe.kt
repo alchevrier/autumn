@@ -13,5 +13,5 @@ package dev.autumn.annotations
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.SOURCE)
 annotation class Observe(
-    val eventWindow: Int = 1_000_000
+    val observerName: String = "metricsHistogram"
 )

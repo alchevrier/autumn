@@ -64,10 +64,9 @@ class ClassicOrderBook {
 @Pipelined
 @JvmInline
 value class OrderEvent(val index: Int) {
-    // Currently manually mapping to the MemoryBank natively since K2 reflection overrides are disabled
-    val ref: Long get() = dev.autumn.memory.AutumnMemoryBank.getLong((67108864L + (index * 8)).toInt())
-    val shares: Int get() = dev.autumn.memory.AutumnMemoryBank.getInt((201326592L + (index * 4)).toInt())
-    val price: Int get() = dev.autumn.memory.AutumnMemoryBank.getInt((268435456L + (index * 4)).toInt())
+    val ref: Long get() = 0L
+    val shares: Int get() = 0
+    val price: Int get() = 0
 }
 
 private val TICK_LEVELS = 10_000 

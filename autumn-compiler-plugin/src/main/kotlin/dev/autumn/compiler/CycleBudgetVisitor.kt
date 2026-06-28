@@ -17,13 +17,15 @@ class CycleBudgetVisitor(
 ) : IrElementVisitorVoid {
 
     private val CYCLE_BUDGET_FQ_NAME = FqName("dev.autumn.annotations.CycleBudget")
+    private val OBSERVE_FQ_NAME = FqName("dev.autumn.annotations.Observe")
 
     override fun visitElement(element: IrElement) {
         element.acceptChildren(this, null)
     }
 
     override fun visitFunction(declaration: IrFunction) {
-        if (declaration.hasAnnotation(CYCLE_BUDGET_FQ_NAME)) {
+        // Collect metrics for BOTH @CycleBudget and @Observe annotated nodes!
+        if (declaration.hasAnnotation(CYCLE_BUDGET_FQ_NAME) || declaration.hasAnnotation(OBSERVE_FQ_NAME)) {
             val annot = declaration.getAnnotation(CYCLE_BUDGET_FQ_NAME)
             val limitArg = annot?.getValueArgument(0) as? IrConst
             val budgetLimit = (limitArg?.value as? Int) ?: 200

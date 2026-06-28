@@ -62,23 +62,41 @@ class TopologySynthesisTransformer(
             val weightArgument = annot?.getValueArgument(1) as? IrConst
             val weight = (weightArgument?.value as? Int) ?: when {
                 isNet -> 100
-                isCold -> 1
-                isSession -> 10
-                else -> 10
+                isCold -> 10
+                else -> 50
             }
 
-            val shardedArgument = annot?.getValueArgument(2) as? IrConst
-            val sharded = (shardedArgument?.value as? Int) ?: 1
-
-            val type = when {
-                isNet -> "HOT_NETWORK" // Legacy type name, indicates Hot->Hot Boundary
-                isCold -> "COLD_SHARED" // Hot->Cold Observatory
-                isSession -> "SESSION" // Cold->Hot 
-                else -> "REGISTER"
+            val typeString = when {
+                isNet -> "BoundaryChannel"
+                isCold -> "ColdChannel"
+                isSession -> "SessionChannel"
+                else -> "RegisterChannel"
             }
 
-            discoveredChannels.add(ChannelTopologyInfo(declaration.name.asString(), weight, capacity, type, sharded, declaration))
+            val sharded = 1
+            
+            discoveredChannels.add(ChannelTopologyInfo(
+                name = declaration.name.asString(),
+                weight = weight,
+                capacity = capacity,
+                type = typeString,
+                sharded = sharded,
+                property = declaration
+            ))
+            
+            // --- INJECT JSON EXPORT FOR CHANNELS ---
+            TopologyExportSerializer.components.add(
+                TopologyExportSerializer.Component(
+                    type = "Channel",
+                    name = declaration.name.asString(),
+                    channelType = typeString,
+                    capacity = capacity,
+                    target = ""
+                )
+            )
+            // ---------------------------------------
         }
+
         return super.visitPropertyNew(declaration)
     }
 

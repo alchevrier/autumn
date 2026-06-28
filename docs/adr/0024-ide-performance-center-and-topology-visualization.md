@@ -39,10 +39,11 @@ We will construct an `autumn-ide-plugin` (targeting IntelliJ / Kotlin Language S
 
 
 6. **Multi-Platform Target Extensibility (iOS, Android, JVM):**
-   - While the primary domain focuses on bare-metal native constraints, the overarching framework targets Kotlin Multiplatform (KMP). The Performance Center must adjust profiling models to account for the specificities of different targets.
-   - For a JVM server target, it will surface allocation paths that trigger Garbage Collection (GC) pauses instead of raw cycle limits.
-   - For mobile targets (iOS/Android), the simulator will model ART/Dalvik overheads or Apple Silicon ARM execution characteristics and thermal throttling considerations.
-   - This ensures the topological mapping provides native-level visibility on any supported backend.
+   - High-performance domains on the JVM and mobile devices (e.g., custom Game Engines, local embedded Databases, or real-time media processing) represent a massive audience that requires strict temporal and spatial guarantees.
+   - While the initial focus was bare-metal native constraints, the overarching framework targets Kotlin Multiplatform (KMP). The Performance Center must adjust profiling models to account for the specificities of these varying targets.
+   - For a JVM server target, it will surface allocation paths that trigger Garbage Collection (GC) pauses and escape analysis failures instead of just raw cycle limits.
+   - For mobile targets (iOS/Android), the simulator will model ART/Dalvik VM overheads, Apple Silicon ARM execution characteristics, and thermal throttling considerations.
+   - This ensures the topological mapping provides native-level visibility gracefully tailored to any supported backend, guaranteeing these massive developer ecosystems are not left behind.
 
 ## Rationale
 - **The FPGA Hardware Model:** Building deterministic systems requires developers to view their logic conceptually as circuits constrained natively by physical limits. By elevating cycles and L1 cache sizes to the status of IDE syntax errors, developers are forced to think spatially.

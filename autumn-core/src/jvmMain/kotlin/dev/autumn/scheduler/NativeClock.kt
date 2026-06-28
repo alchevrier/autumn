@@ -6,10 +6,14 @@ package dev.autumn.scheduler
  * virtualization traps and kernel-space boundary context switching.
  */
 object NativeClock {
+    var isAvailable = false
+        private set
+
     init {
         try {
             // JVM will look for libautumn_clock.so on the java.library.path
             System.loadLibrary("autumn_clock")
+            isAvailable = true
         } catch (e: UnsatisfiedLinkError) {
             println("[Autumn OS] WARNING: autumn_clock native library not found. Falling back to System.nanoTime().")
         }

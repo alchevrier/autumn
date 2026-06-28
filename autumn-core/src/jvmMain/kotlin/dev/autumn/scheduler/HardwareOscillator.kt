@@ -38,8 +38,9 @@ actual class HardwareOscillator actual constructor(private val scheduler: Autumn
 
             // The unapologetic, non-yielding hardware clock generator.
             // Pacing is perfectly correlated to exact ALU cycle transitions.
+            val useNative = NativeClock.isAvailable
             while (isRunning && !Thread.currentThread().isInterrupted) {
-                try {
+                if (useNative) {
                     val currentCycle = NativeClock.rdtsc()
                     if (currentCycle - lastCycle >= targetCyclesPerTick) {
                         scheduler.tick()
@@ -47,7 +48,7 @@ actual class HardwareOscillator actual constructor(private val scheduler: Autumn
                     } else {
                         applyIdleStrategy()
                     }
-                } catch (e: Throwable) {
+                } else {
                     // Fallback to imprecise system clocks if the JNI library isn't compiled
                     val currentCycle = System.nanoTime()
                     if (currentCycle - lastCycle >= 100) {

@@ -104,8 +104,7 @@ fun onInboundNetwork(idx: Int) {
         val nanos = endTime - startTime
         println("[Autumn] Pipelined SoA + Arbiter Loop Time: ${nanos / 1_000_000} ms")
         
-        /* 
-        // Correctness Verification (Adds overhead so it is commented out for raw perf)
+        // Correctness Verification (Adds overhead but proves K2 offset math)
         var isCorrect = true
         val c = classicInstance!!
         for (i in levelDepthCounters.indices) {
@@ -125,7 +124,6 @@ fun onInboundNetwork(idx: Int) {
         }
         if (isCorrect) println("[Autumn] Correctness Verified: TRUE")
         else println("[Autumn] Correctness Verified: FALSE (Mismatch detected!)")
-        */
         
         exitProcess(0)
     }
@@ -175,13 +173,12 @@ var classicInstance: ClassicOrderBook? = null
 
 @LongLived
 fun main() {
-    // Correctness tested offline to avoid JVM cache pollution during benchmark
-    /*
+    // Correctness verified online to proudly prove K2 capabilities
     val classic = ClassicOrderBook()
     classicInstance = classic
     classic.setup()
     println("--- Executing Classic Manual Benchmark ---")
     classic.run()
-    */
+
     bootstrapAutumnPipeline()
 }

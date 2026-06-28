@@ -186,6 +186,7 @@ Architectural decisions live in [`docs/adr/`](docs/adr) and capture the initial 
 - ADR-0023 — Zero-Allocation Observatory Telemetry
 - ADR-0024 — IDE Performance Center and Topology Visualization
 - ADR-0025 — Kotlin-to-RTL (SystemVerilog) High-Level Synthesis
+- ADR-0026 — Automated Real-Time Audit Certification
 
 ## Tooling Roadmap
 

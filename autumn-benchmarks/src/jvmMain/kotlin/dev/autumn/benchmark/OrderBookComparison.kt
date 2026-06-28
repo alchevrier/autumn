@@ -7,6 +7,7 @@ import dev.autumn.memory.AutumnMemoryBank
 import kotlin.system.measureNanoTime
 import kotlin.system.exitProcess
 
+const val WARMUP_COUNT = 500_000
 const val MESSAGE_COUNT = 1_000_000
 
 // =========================================================================
@@ -172,9 +173,25 @@ fun bootstrapAutumnPipeline() {
     }
     globalScheduler.start(coreId = -1)
     
-    // Instead of prefilling 10M, we stream 1M individually into the pipeline 
-    // to measure how fast the loop picks them up! 
+    // Instead of prefilling, we stream individually into the pipeline 
     Thread {
+        println("--- WARMUP PHASE: Stream $WARMUP_COUNT events to trigger C1/C2 JIT ---")
+        for (i in 0 until WARMUP_COUNT) {
+            var order = inboundNetwork.next()
+            while (order.index == -1) { 
+                Thread.yield() // wait for queue space
+                order = inboundNetwork.next()
+            }
+            order.ref = -1L // Signal it's a warmup event
+            order.shares = 100 
+            order.price = (i % 500) + 5000 
+            inboundNetwork.commitNext()
+        }
+        
+        println("--- BENCHMARK PHASE: Start Recording $MESSAGE_COUNT True Execution Events ---")
+        metricsHistogram.startRecording()
+        startTime = System.nanoTime()
+
         for (i in 0 until MESSAGE_COUNT) {
             var order = inboundNetwork.next()
             while (order.index == -1) { 

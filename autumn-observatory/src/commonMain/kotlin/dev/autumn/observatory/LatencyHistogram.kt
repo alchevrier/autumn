@@ -12,11 +12,28 @@ class LatencyHistogram(
 ) {
     private var writeCursor: Int = 0
     private var isFilled: Boolean = false
+    
+    /**
+     * Determines whether the histogram should actively write to the memory bank.
+     * Starts false to prevent JVM JIT warmup pollution.
+     */
+    var isRecording: Boolean = false
+    
+    /**
+     * Resets the cursor to 0 and allows data recording to commence.
+     */
+    fun startRecording() {
+        writeCursor = 0
+        isFilled = false
+        isRecording = true
+    }
 
     /**
      * Record a raw nanosecond or cycle delta directly over the memory bank.
      */
     fun recordDelta(delta: Long) {
+        if (!isRecording) return
+        
         val pointer = baseOffset + (writeCursor * 8)
         AutumnMemoryBank.setLong(pointer, delta)
         

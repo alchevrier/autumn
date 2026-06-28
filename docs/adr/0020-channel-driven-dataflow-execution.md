@@ -1,4 +1,4 @@
-# ADR 0020: Channel-Driven Dataflow Execution
+# ADR 0020: Channel-Driven Dataflow Execution and Thermal Dynamics
 
 ## Status
 Accepted
@@ -10,15 +10,42 @@ We established in previous benchmarks that avoiding the OS scheduler and cross-c
 
 If we map software to hardware (FPGA/ASIC) principles, execution isn't driven by imperative instruction pointers; it is driven by the flow of data across wires (Channels) triggered by a clock (the Arbiter).
 
+Furthermore, we must formalize the **Thermal Dynamics** of these channels. Not all data flowing through a system requires the same latency guarantees. Mixing slow data (telemetry) with fast data (market ticks) natively destroys pipeline performance due to cache pollution and buffer bloat.
+
 ## Decision
-We will completely eliminate user-space threads and imperative control flow loops in the Autumn architecture. Execution will be entirely **event-driven via Channels**, mirroring hardware dataflow.
+We will completely eliminate user-space threads and imperative control flow loops in the Autumn architecture. Execution will be entirely **event-driven via Channels**, mirroring hardware dataflow. We will strictly categorize these channels into architectural boundaries based on their Thermal Flow.
+
+### The Thermal Flow Taxonomy
+
+#### 1. Hot ➔ Hot (The Data Plane / Multiplexing)
+* **Purpose:** Core business execution. Sharding, multiplexing, and pipeline staging.
+* **Component:** `@NetworkChannel` / `@RegisterChannel`
+* **Mechanics:** Strict, pre-allocated SPSC (Single-Producer Single-Consumer) queues with 64-byte L1 cache-line padding. If the pipeline backs up, the system must apply mechanical backpressure or drop packets (load shedding), because both ends are running at maximum CPU frequency (`~29ns` handoffs).
+* **Example:** A raw AF_XDP network socket (Hot) feeding a FIX parser (Hot), which hashes the stock symbol and drops it into 4 parallel Order Book matching engines (Hot).
+
+#### 2. Cold ➔ Hot (Configuration / Control Plane)
+* **Purpose:** Injecting state or limits into the fast path without stalling it.
+* **Component:** `SessionChannel` (Concept) / Config Bound Channels
+* **Mechanics:** The Cold producer writes to the channel sporadically. The Hot Arbiter polls it once per `tick()` sweep. If there's new config, it updates the local primitive arrays. If not, it moves on instantly. The Hot path never waits for the Cold path.
+* **Example:** Updating a risk limit, adding a new stock symbol, or negotiating a new UI theme configuration.
+
+#### 3. Hot ➔ Cold (Observatory / Logging)
+* **Purpose:** Extracting state, telemetry, and audits from the fast path without slowing it down (Zero Observer Effect).
+* **Component:** `@ColdChannel`
+* **Mechanics:** A "Fire and Forget" buffer. The Hot path pushes data in. If the Cold consumer (the logger/disk writer) is too slow and the buffer fills up, the Hot path **must overwrite or drop the telemetry** rather than blocking the trade or frame render. 
+* **Example:** The `autumn-observatory` timestamp dumping, writing trade executions to disk, or sending UI analytics.
+
+### Boundary Channels
+It is also established that `@NetworkChannel` conceptually represents a broader **`BoundaryChannel`**. A system does not just have a "Network" device. It may have incoming Dataflow bounds from AF_XDP queues, persistent UDP devices, WebSockets, or UI Touch Event queues. All of these external hardware integrations classify as `BoundaryChannels` feeding into the internal `Hot ➔ Hot` Data Plane.
+
+### Execution mechanics
 
 1. **Channels as the Primary Primitive**: Developers instantiate `Channel` objects (representing physical memory ring buffers) with an assigned `weight` (priority/bandwidth).
 2. **Topology over Control Flow**: Developers connect Stateful Components (Finite State Machines) to Channels. There are no explicit thread pools or Coroutine Dispatchers in user-space.
 3. **Automatic Arbiter Synthesis**: When the system boots, Autumn analyzes the Channel weights and synthesizes an unrolled, lock-free polling schedule (the Arbiter). 
-4. **Hot vs. Cold Arbiters (Dispatchers)**: Arbiters themselves have distinct execution profiles based on their assigned role:
-   - **Hot Arbiters**: Pinned to isolated physical cores. Spin-wait at 100% CPU utilization. Never yield to the OS. Execute the latency-critical pipelines (e.g., Network, Matching Engine).
-   - **Cold Arbiters**: Running on shared/unisolated cores. Allowed to park, sleep, or yield to the OS. Handle non-critical paths like the UI dispatcher, disk I/O, or background telemetry.
+4. **Hot vs. Cold Profiles (Dispatchers)**: Arbiters themselves have distinct execution profiles based on their assigned role:
+   - **Hot Plotted**: Pinned to isolated physical cores. Clocked actively via the `HardwareOscillator`. Never yield to the OS. Execute the latency-critical pipelines (e.g., Network, Matching Engine).
+   - **Cold Shared**: Running on shared/unisolated cores. Allowed to park, sleep, or yield to the OS. Handle non-critical paths like the UI dispatcher, disk I/O, or background telemetry.
 5. **Dataflow Execution**: The only way a developer triggers work is by pushing data into a Channel. The synthesized Arbiter continuously pulses the Channels according to their weights, executing the connected state machines inline without context switches.
 
 ### Example User Model (Financial Engine)

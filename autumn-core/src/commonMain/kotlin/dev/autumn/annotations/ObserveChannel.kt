@@ -9,5 +9,6 @@ package dev.autumn.annotations
 @Target(AnnotationTarget.PROPERTY, AnnotationTarget.FIELD)
 @Retention(AnnotationRetention.SOURCE)
 annotation class ObserveChannel(
-    val observerName: String = "metricsHistogram"
+    val observerName: String = "metricsHistogram",
+    val capacity: Int = 1_000_000
 )

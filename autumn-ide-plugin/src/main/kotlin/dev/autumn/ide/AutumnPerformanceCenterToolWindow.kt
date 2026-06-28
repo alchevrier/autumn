@@ -58,8 +58,10 @@ fun TopologyDashboard(project: Project) {
                     components = decoded
                     lastUpdated = java.time.LocalTime.now().toString()
                 } catch(e: Exception) {
-                    // Safe polling
+                    lastUpdated = "Error parsing json: ${e.message}"
                 }
+            } else {
+                lastUpdated = "File not found: ${topologyFile.absolutePath}"
             }
         }
         onDispose { timer.cancel() }

@@ -15,7 +15,7 @@ graph TD
     subgraph Frontend ["Kotlin Source Code"]
         direction TB
         Src1["@Pipelined value class"]
-        Src2["@NetworkChannel handlers"]
+        Src2["@BoundaryChannel handlers"]
         Src3["@LongLived scope"]
     end
     
@@ -51,10 +51,10 @@ graph TD
 ```
 
 ### 1. Topology Synthesis (`TopologySynthesisTransformer.kt`)
-This is the heart of Autumn's high-speed routing. The plugin sweeps the codebase for hardware-annotated boundaries (`@NetworkChannel`, `@ColdChannel`, etc.) and completely rewrites the developer's idiomatic function blocks:
+This is the heart of Autumn's high-speed routing. The plugin sweeps the codebase for hardware-annotated boundaries (`@BoundaryChannel`, `@ColdChannel`, etc.) and completely rewrites the developer's idiomatic function blocks:
 - **Deterministic Frame Unrolling:** The compiler generates a single deterministic execution frame (a static sequence of `if(poll >= 0) { ... commit() }` evaluations) rather than monolithic `while(true)` spinloops. This allows the host platform (like `AutumnScheduler` or Android's `Choreographer`) to drive the pipeline cooperatively, eliminating thermal throttling and ANRs while preserving A Priori cycle costing.
 - **Hardware-Sympathetic Queues:** It binds the unrolled frames directly to pre-allocated `Channel` multiplatform SPSC structures via the `poll()` function, natively injecting thread-aware cache yields when the circuit is dry.
-- **Topological Thread Binding:** When it detects `@NetworkChannel(sharded = N)`, it injects `AutumnRuntime.spawn` calls, mapping FSM bounds lock-free across `N` physically padded threads.
+- **Topological Thread Binding:** When it detects `@BoundaryChannel(sharded = N)`, it injects `AutumnRuntime.spawn` calls, mapping FSM bounds lock-free across `N` physically padded threads.
 
 ### 2. Global Memory Struct Pooling (`@Pipelined` Interception)
 Autumn overrides traditional object orientation. When the K2 compiler encounters a `value class` annotated with `@Pipelined`, it prevents standard JVM boxing/unboxing entirely.

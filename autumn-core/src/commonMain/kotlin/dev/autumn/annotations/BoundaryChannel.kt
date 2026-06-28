@@ -16,7 +16,7 @@ package dev.autumn.annotations
  */
 @Target(AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER)
 @Retention(AnnotationRetention.SOURCE)
-annotation class NetworkChannel(
+annotation class BoundaryChannel(
     val capacity: Int = 1024,
     val weight: Int = 100,
     val sharded: Int = 1

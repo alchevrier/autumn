@@ -19,7 +19,7 @@ We will completely eliminate user-space threads and imperative control flow loop
 
 #### 1. Hot ➔ Hot (The Data Plane / Multiplexing)
 * **Purpose:** Core business execution. Sharding, multiplexing, and pipeline staging.
-* **Component:** `@NetworkChannel` / `@RegisterChannel`
+* **Component:** `@BoundaryChannel` / `@RegisterChannel`
 * **Mechanics:** Strict, pre-allocated SPSC (Single-Producer Single-Consumer) queues with 64-byte L1 cache-line padding. If the pipeline backs up, the system must apply mechanical backpressure or drop packets (load shedding), because both ends are running at maximum CPU frequency (`~29ns` handoffs).
 * **Example:** A raw AF_XDP network socket (Hot) feeding a FIX parser (Hot), which hashes the stock symbol and drops it into 4 parallel Order Book matching engines (Hot).
 
@@ -36,7 +36,7 @@ We will completely eliminate user-space threads and imperative control flow loop
 * **Example:** The `autumn-observatory` timestamp dumping, writing trade executions to disk, or sending UI analytics.
 
 ### Boundary Channels
-It is also established that `@NetworkChannel` conceptually represents a broader **`BoundaryChannel`**. A system does not just have a "Network" device. It may have incoming Dataflow bounds from AF_XDP queues, persistent UDP devices, WebSockets, or UI Touch Event queues. All of these external hardware integrations classify as `BoundaryChannels` feeding into the internal `Hot ➔ Hot` Data Plane.
+It is also established that `@BoundaryChannel` conceptually represents a broader **`BoundaryChannel`**. A system does not just have a "Network" device. It may have incoming Dataflow bounds from AF_XDP queues, persistent UDP devices, WebSockets, or UI Touch Event queues. All of these external hardware integrations classify as `BoundaryChannels` feeding into the internal `Hot ➔ Hot` Data Plane.
 
 ### Execution mechanics
 
@@ -51,17 +51,17 @@ It is also established that `@NetworkChannel` conceptually represents a broader 
 ### Example User Model (Financial Engine)
 ```kotlin
 // 1. Definition (The Wires)
-val networkChannel = Channel<NetworkFrame>(weight = 100)
+val boundaryChannel = Channel<NetworkFrame>(weight = 100)
 val sessionChannel = Channel<SessionMessage>(weight = 10)
 val coldChannel = Channel<Telemetry>(weight = 1)
 
 // 2. Wiring (The Circuit)
-networkChannel.connect(orderBook)
+boundaryChannel.connect(orderBook)
 sessionChannel.connect(riskEngine)
 coldChannel.connect(metricsDb)
 
 // 3. Execution triggers by push
-networkChannel.push(frame) // Arbiter naturally picks this up on next clock pulse
+boundaryChannel.push(frame) // Arbiter naturally picks this up on next clock pulse
 ```
 
 ### Example User Model (Game Engine)
@@ -94,7 +94,7 @@ In this scenario, the synthesis engine scales the polls organically. Player inpu
 - **Temporal Synchronization (Zero Locks)**: Because the Arbiter processes Channels sequentially on a single thread, *temporality* replaces *locking*. Even state mutations (like updating an Order Book) do not require Seqlocks or volatile variables internally. The schedule guarantees exclusivity. Synchronization (via wait-free SPSC ring buffers) only exists at the absolute boundary of the hardware partition.
 - **Aggressive Pipelining via Hash Routing**: Because internal state is lock-free and isolated to a specific Arbiter/Core, work can be sharded aggressively. An inbound socket listener can apply MurmurHash3 to incoming session IDs or symbol tickers and statically route them to the SPSC channel of a specific Arbiter. This guarantees sequence ordering and core-affinity without shared state.
 - **Zero Context Switching**: The core runs a tight `jmp` polling loop. It never yields to the OS.
-- **Mechanism vs. Policy Separation**: Autumn provides the polling mechanism; the developer defines the policy via Channel weights. A database might weigh `ColdChannel` at 100, while an HFT engine weighs `NetworkChannel` at 100.
+- **Mechanism vs. Policy Separation**: Autumn provides the polling mechanism; the developer defines the policy via Channel weights. A database might weigh `ColdChannel` at 100, while an HFT engine weighs `BoundaryChannel` at 100.
 - **Mental Model Shift**: Developers stop thinking about "threads executing instructions" and start thinking about "events mutating state in a pipeline", forcing cleaner, more decoupled Code.
 
 ### Negative

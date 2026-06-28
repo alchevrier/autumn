@@ -17,12 +17,12 @@ Traditional HFT solutions map the NIC directly to userspace using **DPDK** or **
 However, **AF_XDP** (eXpress Data Path) is a modern Linux kernel feature (built via eBPF) that allows user-space applications to receive packets directly from the NIC driver *before* they enter the Linux networking stack, without requiring out-of-tree vendor-specific kernel modules like DPDK.
 
 ## Decision
-Autumn will implement standard `AF_XDP` sockets as the primary implementation of the `@NetworkChannel` topology.
+Autumn will implement standard `AF_XDP` sockets as the primary implementation of the `@BoundaryChannel` topology.
 
 ### Architecture Mechanics
 `AF_XDP` relies on a shared memory region called the **UMEM**, combined with an **eBPF (Extended Berkeley Packet Filter)** program to route only the relevant traffic to us.
 
-1. **eBPF Traffic Filtering & Decapsulation:** By default, XDP intercepts *everything* on a network queue. To prevent SSH, ARP, or other background noise from polluting our lock-free rings, we attach a compiled eBPF program directly to the NIC hardware hook. This program parses the headers (Ethernet -> IP -> UDP). If it matches our target `NetworkChannel` criteria:
+1. **eBPF Traffic Filtering & Decapsulation:** By default, XDP intercepts *everything* on a network queue. To prevent SSH, ARP, or other background noise from polluting our lock-free rings, we attach a compiled eBPF program directly to the NIC hardware hook. This program parses the headers (Ethernet -> IP -> UDP). If it matches our target `BoundaryChannel` criteria:
     * It uses `bpf_xdp_adjust_head` to physically strip away all L2/L3/L4 network headers.
     * It returns `XDP_REDIRECT` to send *only the raw application payload* to our AF_XDP socket.
     Everything else returns `XDP_PASS` to gracefully flow to the normal Linux kernel.

@@ -22,7 +22,7 @@ object AutumnDiagnosticRenderer : BaseDiagnosticRendererFactory() {
         )
         put(
             AutumnErrors.CONFLICTING_CHANNEL_TYPES,
-            "[Autumn] Architectural contradiction: A property cannot be both a @ColdChannel and a @RegisterChannel/@NetworkChannel."
+            "[Autumn] Architectural contradiction: A property cannot be both a @ColdChannel and a @RegisterChannel/@BoundaryChannel."
         )
         put(
             AutumnErrors.INVALID_REGISTER_CHANNEL_CAPACITY,

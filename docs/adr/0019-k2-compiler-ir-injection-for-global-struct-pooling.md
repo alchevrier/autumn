@@ -6,7 +6,7 @@ Accepted (2026-06-24)
 ## Context
 Standard Kotlin/JVM environments rely heavily on the garbage collector and heap-allocated objects for data passing. In high-frequency trading (HFT) and ultra-low latency scenarios, pointer chasing and cache misses create unacceptable p99 tail latencies. While we solved data modeling via the Flyweight Zero Allocation Model (ADR-0017) and ring buffers (ADR-0014), the actual initialization of these channels naturally spawned fragmented arrays across the heap.
 
-We needed a way to statically prove channel capacity layouts (`@ThreadCacheBudget`, capacity alignments) and condense disjoint architectural queues (`@RegisterChannel`, `@NetworkChannel`, `@ColdChannel`) into a unified, contiguous hardware memory pool (`AutumnMemoryBank`).
+We needed a way to statically prove channel capacity layouts (`@ThreadCacheBudget`, capacity alignments) and condense disjoint architectural queues (`@RegisterChannel`, `@BoundaryChannel`, `@ColdChannel`) into a unified, contiguous hardware memory pool (`AutumnMemoryBank`).
 
 ## Decision
 We enforce a literal OS-bypass at the compiler level via a custom Kotlin K2 Compiler Plugin using the new FIR/IR architecture:

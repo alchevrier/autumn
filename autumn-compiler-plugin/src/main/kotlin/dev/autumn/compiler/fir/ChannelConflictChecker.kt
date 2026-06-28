@@ -16,7 +16,7 @@ object ChannelConflictChecker : FirPropertyChecker(MppCheckerKind.Common) {
 
     private val COLD_CHANNEL_ID = ClassId.topLevel(FqName("dev.autumn.annotations.ColdChannel"))
     private val REGISTER_CHANNEL_ID = ClassId.topLevel(FqName("dev.autumn.annotations.RegisterChannel"))
-    private val NETWORK_CHANNEL_ID = ClassId.topLevel(FqName("dev.autumn.annotations.NetworkChannel"))
+    private val NETWORK_CHANNEL_ID = ClassId.topLevel(FqName("dev.autumn.annotations.BoundaryChannel"))
 
     // Normally this would be parsed from autumn.yaml or build.gradle.kts
     private const val MAX_ISOLATED_HOT_CORES = 4

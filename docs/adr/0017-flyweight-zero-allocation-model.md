@@ -54,7 +54,7 @@ fun processMarketData(order_index: Int) {
 ```
 
 ### The Scheduler Handoff
-When the Cache-Affinity Scheduler parses an incoming packet from a `@NetworkChannel`, it evaluates the hash/key and derives an array index (e.g., `0`). It instantiates the flyweight wrapper `val event = OrderEventFlyweight(0)` and hands it to the hot logic. 
+When the Cache-Affinity Scheduler parses an incoming packet from a `@BoundaryChannel`, it evaluates the hash/key and derives an array index (e.g., `0`). It instantiates the flyweight wrapper `val event = OrderEventFlyweight(0)` and hands it to the hot logic. 
 Because `OrderEventFlyweight` is marked `inline`, the Kotlin compiler optimizes the instantiation away. No heap memory is ever requested from the OS allocator. 
 
 ## Consequences

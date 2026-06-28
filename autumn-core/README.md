@@ -11,7 +11,7 @@ graph TD
         
         subgraph Pacts ["Compiler Pacts (Annotations)"]
             A1["@Pipelined"]
-            A2["@NetworkChannel"]
+            A2["@BoundaryChannel"]
             A3["@LongLived / @InjectTopology"]
         end
         
@@ -54,7 +54,7 @@ In standard Android/iOS development, core modules hold DTOs and interfaces (`Use
 Autumn developers don't write manual hardware math—they write idiomatic Kotlin constrained by these pacts. The K2 Compiler Plugin intercepts these markers:
 
 - `@Pipelined`: Indicates a struct (typically a `@JvmInline value class`) that should never be instantiated. The compiler rewrites its property getters to perform pointer-math directly against the `AutumnMemoryBank`.
-- `@NetworkChannel(sharded = N)`: Defines the entry-point ring buffer. Instructs the compiler to unroll a multi-core FSM FSM block that polls this channel natively.
+- `@BoundaryChannel(sharded = N)`: Defines the entry-point ring buffer. Instructs the compiler to unroll a multi-core FSM FSM block that polls this channel natively.
 - `@ColdChannel`: A zero-copy multicast channel endpoint. Consumers track their own index into the upstream ring buffer without locking the hot path or duplicating memory.
 - `@RegisterChannel`: A deterministic endpoint for executing SoA mutations in-place (e.g. OrderBook matching arrays or UI registry arrays).
 - `@LongLived`: Enforces strict compile-time checks that objects matching this annotation never allocate on the heap dynamically during the FSM loop execution.

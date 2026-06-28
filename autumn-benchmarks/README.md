@@ -34,7 +34,7 @@ The typical single-core cycle budget for x86 processors means we are completing 
 
 ### The Autumn Solution: Static Topologies
 
-When the `@NetworkChannel(sharded = N)` annotation is added, the Autumn K2 compiler automatically bridges this exact architecture without the boilerplate:
+When the `@BoundaryChannel(sharded = N)` annotation is added, the Autumn K2 compiler automatically bridges this exact architecture without the boilerplate:
 
 - It dynamically instantiates an array of `N` separated SPSC channels (`initPartitions`).
 - It seamlessly rewrites the producer's `event = inboundNetwork.next()` to hash the symbol payload (`hashKey`) and target the specifically pinned SPSC partition partition natively via `nextIndex(hashKey)`.

@@ -18,7 +18,7 @@ We will build a dedicated **IntelliJ IDE Plugin** and establish a standard **Com
 3. **Key Plugin Capabilities:**
    - *Inline Cache Budgets:* Inline UI hints above `@Pipelined` structs detailing byte size and L1 cache consumption.
    - *A Priori Cost Tooltips:* Exposing the static cycle cost / tick bounds of unrolled `@InjectTopology` pipeline sequences.
-   - *Dataflow Navigation:* A side-panel or inline graph rendering the exact routing between `@NetworkChannel`, its shards, and the destination FSM handlers, effectively bypassing standard "Find Usages."
+   - *Dataflow Navigation:* A side-panel or inline graph rendering the exact routing between `@BoundaryChannel`, its shards, and the destination FSM handlers, effectively bypassing standard "Find Usages."
    - *Proactive Squiggles:* Warning developers *before* compilation if an added property structurally overflows the specified `@ThreadCacheBudget` threshold.
 
 ## Consequences

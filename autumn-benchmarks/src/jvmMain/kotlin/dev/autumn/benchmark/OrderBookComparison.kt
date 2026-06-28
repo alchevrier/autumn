@@ -80,7 +80,7 @@ var levelOrderShares = IntArray(TICK_LEVELS * MAX_ORDERS_PER_LEVEL)
 var levelDepthCounters = IntArray(TICK_LEVELS)
 
 @LongLived
-@NetworkChannel(capacity = 16777216, weight = 100)
+@BoundaryChannel(capacity = 16777216, weight = 100)
 val inboundNetwork = dev.autumn.channel.AutumnChannel<OrderEvent>(16777216)
 
 var startTime = 0L

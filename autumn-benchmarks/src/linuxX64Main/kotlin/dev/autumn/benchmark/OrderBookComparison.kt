@@ -4,7 +4,9 @@ import dev.autumn.annotations.*
 import dev.autumn.observatory.LatencyHistogram
 import dev.autumn.channel.Channel
 import dev.autumn.memory.AutumnMemoryBank
-import kotlin.system.measureNanoTime
+import kotlin.system.getTimeNanos
+import kotlinx.cinterop.*
+import platform.posix.* 
 import kotlin.system.exitProcess
 
 const val WARMUP_COUNT = 500_000
@@ -37,24 +39,24 @@ class ClassicOrderBook {
     }
 
     fun run() {
-        val nanos = measureNanoTime {
-            while (readIdx < MESSAGE_COUNT) {
-                val idx = readIdx++
-                val ref = channelRefs[idx]
-                val s = channelShares[idx]
-                val px = channelPrices[idx]
+        val startNano = dev.autumn.scheduler.AutumnClock.now()
+        while (readIdx < MESSAGE_COUNT) {
+            val idx = readIdx++
+            val ref = channelRefs[idx]
+            val s = channelShares[idx]
+            val px = channelPrices[idx]
 
-                val baseOffset = px * MAX_ORDERS_PER_LEVEL
-                val depth = levelDepthCounters[px]
+            val baseOffset = px * MAX_ORDERS_PER_LEVEL
+            val depth = levelDepthCounters[px]
 
-                if (depth < MAX_ORDERS_PER_LEVEL) {
-                    val slot = baseOffset + depth
-                    levelOrderRefs[slot] = ref
-                    levelOrderShares[slot] = s
-                    levelDepthCounters[px] = depth + 1
-                }
+            if (depth < MAX_ORDERS_PER_LEVEL) {
+                val slot = baseOffset + depth
+                levelOrderRefs[slot] = ref
+                levelOrderShares[slot] = s
+                levelDepthCounters[px] = depth + 1
             }
         }
+        val nanos = dev.autumn.scheduler.AutumnClock.now() - startNano
         println("[Classic] Manual SoA array extraction Time: ${nanos / 1_000_000} ms")
     }
 }
@@ -64,7 +66,7 @@ class ClassicOrderBook {
 // =========================================================================
 
 @Pipelined
-@JvmInline
+
 value class OrderEvent(val index: Int) {
     var ref: Long
         get() = 0L
@@ -96,6 +98,7 @@ val inboundNetwork = dev.autumn.channel.AutumnChannel<OrderEvent>(16777216)
 @ObserveChannel(observerName = "networkTelemetry", capacity = MESSAGE_COUNT)
 val metricsHistogram = LatencyHistogram(0, MESSAGE_COUNT)
 
+
 var startTime = 0L
 
 @Observe("networkTelemetry")
@@ -115,7 +118,7 @@ fun onInboundNetwork(idx: Int) {
     }
     
     if (event.ref == MESSAGE_COUNT.toLong() - 1L) {
-        val endTime = System.nanoTime()
+        val endTime = dev.autumn.scheduler.AutumnClock.now()
         val nanos = endTime - startTime
         println("[Autumn] Pipelined SoA + Arbiter Loop Time: ${nanos / 1_000_000} ms")
         
@@ -166,7 +169,7 @@ fun bootstrapAutumnPipeline() {
     println("\n--- Executing JVM Compiler-Rewritten Topology ---")
     // Simulate NIC filling the buffer into the memory bank
     AutumnMemoryBank.allocate(16777216 * 20)
-    startTime = System.nanoTime()
+    startTime = dev.autumn.scheduler.AutumnClock.now()
     
     // Bind the unrolled tick and start the self-regulated clock!
     globalScheduler.bindStaticTopology {
@@ -176,36 +179,35 @@ fun bootstrapAutumnPipeline() {
     globalScheduler.start(coreId = -1)
     
     // Instead of prefilling, we stream individually into the pipeline 
-    Thread {
-        println("--- WARMUP PHASE: Stream $WARMUP_COUNT events to trigger C1/C2 JIT ---")
-        for (i in 0 until WARMUP_COUNT) {
-            var order = inboundNetwork.next()
-            while (order.index == -1) { 
-                Thread.yield() // wait for queue space
-                order = inboundNetwork.next()
-            }
-            order.ref = -1L // Signal it's a warmup event
-            order.shares = 100 
-            order.price = (i % 500) + 5000 
-            inboundNetwork.commitNext()
+    // Running straight on main thread blocks POSIX exit.
+    println("--- WARMUP PHASE: Stream $WARMUP_COUNT events to trigger C1/C2 JIT ---")
+    for (i in 0 until WARMUP_COUNT) {
+        var order = inboundNetwork.next()
+        while (order.index == -1) { 
+            platform.posix.sched_yield() // wait for queue space
+            order = inboundNetwork.next()
         }
-        
-        println("--- BENCHMARK PHASE: Start Recording $MESSAGE_COUNT True Execution Events ---")
-        metricsHistogram.startRecording()
-        startTime = System.nanoTime()
+        order.ref = -1L // Signal it's a warmup event
+        order.shares = 100 
+        order.price = (i % 500) + 5000 
+        inboundNetwork.commitNext()
+    }
+    
+    println("--- BENCHMARK PHASE: Start Recording $MESSAGE_COUNT True Execution Events ---")
+    metricsHistogram.startRecording()
+    startTime = dev.autumn.scheduler.AutumnClock.now()
 
-        for (i in 0 until MESSAGE_COUNT) {
-            var order = inboundNetwork.next()
-            while (order.index == -1) { 
-                Thread.yield() // wait for queue space
-                order = inboundNetwork.next()
-            }
-            order.ref = i.toLong() 
-            order.shares = 100 
-            order.price = (i % 500) + 5000 
-            inboundNetwork.commitNext()
+    for (i in 0 until MESSAGE_COUNT) {
+        var order = inboundNetwork.next()
+        while (order.index == -1) { 
+            platform.posix.sched_yield() // wait for queue space
+            order = inboundNetwork.next()
         }
-    }.start()
+        order.ref = i.toLong() 
+        order.shares = 100 
+        order.price = (i % 500) + 5000 
+        inboundNetwork.commitNext()
+    }
 }
 
 var classicInstance: ClassicOrderBook? = null
@@ -220,4 +222,5 @@ fun main() {
     classic.run()
 
     bootstrapAutumnPipeline()
+    platform.posix.sleep(5U)
 }

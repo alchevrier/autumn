@@ -19,6 +19,9 @@ class AutumnIrGenerationExtension(
         moduleFragment.accept(visitor, null)
 
         val cacheVisitor = ThreadCacheBudgetVisitor(pluginContext, messageCollector)
+
+        val cycleVisitor = CycleBudgetVisitor(pluginContext, messageCollector)
+        moduleFragment.accept(cycleVisitor, null)
         moduleFragment.accept(cacheVisitor, null)
 
         // 3. Lower @Pipelined data structures into Structure of Arrays (SoA) layouts using Global Pooling

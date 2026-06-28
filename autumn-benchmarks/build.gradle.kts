@@ -13,8 +13,16 @@ kotlin {
         }
     }
     
+    linuxX64 {
+        binaries {
+            executable {
+                entryPoint = "dev.autumn.benchmark.main"
+            }
+        }
+    }
+    
     sourceSets {
-        val jvmMain by getting {
+        val buildDeps = Action<org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet> {
             dependencies {
                 implementation(project(":autumn-core"))
                 implementation(project(":autumn-observatory"))
@@ -25,12 +33,8 @@ kotlin {
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
             }
         }
-    }
-}
-
-benchmark {
-    targets {
-        register("jvm")
+        val jvmMain by getting { buildDeps.execute(this) }
+        val linuxX64Main by getting { buildDeps.execute(this) }
     }
 }
 
@@ -40,10 +44,12 @@ val runComparison by tasks.registering(JavaExec::class) {
     mainClass.set("dev.autumn.benchmark.OrderBookComparisonKt")
 }
 
-tasks.register("printClasspath") {
-    doLast {
-        val jvmMain = kotlin.targets.getByName("jvm").compilations.getByName("main") as org.jetbrains.kotlin.gradle.plugin.mpp.KotlinJvmCompilation
-        val cp = (jvmMain.output.allOutputs + jvmMain.runtimeDependencyFiles).files.joinToString(":")
-        println("CLASSPATH=$cp")
+val runNativeComparison by tasks.registering(Exec::class) {
+    val nativeLinkTask = tasks.named("linkReleaseExecutableLinuxX64")
+    dependsOn(nativeLinkTask)
+    doFirst {
+        val linuxTarget = kotlin.targets.getByName("linuxX64") as org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+        val exe = linuxTarget.binaries.getExecutable("", org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType.RELEASE).outputFile
+        commandLine(exe.absolutePath)
     }
 }

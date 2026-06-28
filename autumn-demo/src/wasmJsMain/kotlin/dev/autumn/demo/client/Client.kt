@@ -1,5 +1,11 @@
 package dev.autumn.demo.client
 
+import dev.autumn.annotations.BoundaryChannel
+import dev.autumn.annotations.InjectTopology
+
+import dev.autumn.annotations.Pipelined
+import dev.autumn.annotations.Speculative
+import dev.autumn.channel.AutumnChannel
 import dev.autumn.annotations.LongLived
 import dev.autumn.ui.ioc.AutumnMotherboard
 import dev.autumn.resolver.handoff.RawNetworkClient
@@ -28,6 +34,43 @@ class WasmFetchNetworkClient : RawNetworkClient {
             }
         }
     }
+}
+
+
+
+// ==========================================
+// 1. Autumn FSM Topology Configuration 
+// ==========================================
+
+@Pipelined
+
+value class UiPulse(val index: Int) {
+    // Zero-alloc property wrapper (struct) mapped directly into linear Wasm memory
+    var triggerSlot: Int
+        get() = 0
+        set(value) {}
+}
+
+@LongLived
+@BoundaryChannel(capacity = 100)
+@Speculative(burstWindow = 400)
+val uiPulseWire = AutumnChannel<UiPulse>(100)
+
+@LongLived
+fun onUiPulseWire(idx: Int) {
+    val evt = UiPulse(idx)
+    // The FSM ticks, executing the UI binder natively from the circuit map!
+    binder.renderTo("root")
+}
+
+@InjectTopology
+fun tickAutumnPipeline() {
+    // Compiler statically injects while(poll) bursts here!
+}
+
+@dev.autumn.annotations.LongLived
+val globalScheduler = dev.autumn.scheduler.AutumnScheduler().apply {
+    powerMode = dev.autumn.scheduler.PowerMode.ACTIVE
 }
 
 var currentFilter: String = ""

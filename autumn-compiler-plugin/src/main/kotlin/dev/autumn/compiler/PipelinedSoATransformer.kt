@@ -312,7 +312,8 @@ class PipelinedSoATransformer(
             
             val className = parentClass?.name?.asString() ?: return super.visitCall(expression)
             
-            val targetClassName = propertyLocalSoAByteOffsets.keys.find { it == className || className.startsWith(it) } ?: return super.visitCall(expression)
+            val targetClassName = propertyLocalSoAByteOffsets.keys.find { it == className || className.startsWith(it) }
+if (targetClassName == null) return super.visitCall(expression)
             val offsetMap = propertyLocalSoAByteOffsets[targetClassName] ?: return super.visitCall(expression)
             val propertyBaseOffset = offsetMap[propertyName]
             

@@ -137,18 +137,23 @@ fun tickAutumnPipeline() {
     // Compiler injects exactly one sequence of poll checks here.
 }
 
+@LongLived
+val globalScheduler = dev.autumn.scheduler.AutumnScheduler().apply {
+    powerMode = dev.autumn.scheduler.PowerMode.ACTIVE
+}
+
 fun bootstrapAutumnPipeline() {
     println("\n--- Executing JVM Compiler-Rewritten Topology ---")
     // Simulate NIC filling the buffer into the memory bank
     AutumnMemoryBank.allocate(16777216 * 20)
     startTime = System.nanoTime()
     
-    // Loop the injected tick instead of relying on the plugin to spin
-    Thread {
-        while (true) {
-            tickAutumnPipeline()
-        }
-    }.start()
+    // Bind the unrolled tick and start the self-regulated clock!
+    globalScheduler.bindStaticTopology {
+        tickAutumnPipeline()
+        true // We return true since the generated function is currently Unit
+    }
+    globalScheduler.start(coreId = -1)
     
     // Instead of prefilling 10M, we stream 1M individually into the pipeline 
     // to measure how fast the loop picks them up! 

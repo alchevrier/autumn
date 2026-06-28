@@ -183,6 +183,9 @@ Architectural decisions live in [`docs/adr/`](docs/adr) and capture the initial 
 - ADR-0020 — Channel-Driven Dataflow Execution
 - ADR-0021 — Clock-Aware Execution Scheduling
 - ADR-0022 — IntelliJ Circuit Visualizer and Compiler Telemetry
+- ADR-0023 — Zero-Allocation Observatory Telemetry
+- ADR-0024 — IDE Performance Center and Topology Visualization
+- ADR-0025 — Kotlin-to-RTL (SystemVerilog) High-Level Synthesis
 
 ## Tooling Roadmap
 

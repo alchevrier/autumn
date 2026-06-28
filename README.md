@@ -148,6 +148,20 @@ Architectural decisions live in [`docs/adr/`](docs/adr) and capture the initial 
 - ADR-0019 — K2 Compiler IR Injection for Global Struct Pooling
 - ADR-0020 — Channel-Driven Dataflow Execution
 - ADR-0021 — Clock-Aware Execution Scheduling
+- ADR-0022 — IntelliJ Circuit Visualizer and Compiler Telemetry
+
+## Tooling Roadmap
+
+Autumn's goal is to bridge the gap between high-level application development and Hardware Description Languages (HDL). Toward this effort, future development focuses heavily on moving telemetry out of the console and directly into the developer's IDE:
+
+### The Autumn IntelliJ IDEA / Android Studio Plugin
+Because the `autumn-compiler-plugin` performs massive amounts of *A Priori* static analysis (calculating L1 cache bounds, physical memory padding, and cycle costs), we plan to export this exact mathematical layout via a standard telemetry contract (e.g., `autumn-topology.json`).
+
+A companion IntelliJ plugin will map this data back onto the source code, creating a real-time **Hardware Schematic** inside the editor:
+- **Visual Circuit Graphs:** Ctrl+Click an `@NetworkChannel` and open a node-based visualizer showing the exact flow of data through your FSM ticks, bypassing typical standard "Find Usages" clutter.
+- **Inline Hardware Telemetry:** See gray `[24 bytes | 3% L1 Cache]` CodeLens hints sitting directly above your `@Pipelined` structs. 
+- **Cycle Costing Feedback:** Hover over a `tick()` handler and see exactly how many ALU CPU cycles the compiler mathematically predicts the frame will cost. 
+- **Pre-emptive Squiggles:** Automatically red-underline a new class property if it crosses the strictly enforced `@ThreadCacheBudget` capacity boundary *before* you run the gradle build.
 
 ## Integration example (Server / HFT Pipeline)
 

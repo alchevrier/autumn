@@ -146,18 +146,59 @@ class TopologySynthesisTransformer(
                                                 thenPart = irBlock {
                                                     +irSet(anyHandledVar, irTrue())
                                                     val eventType = handler.valueParameters[0].type
-                                                    val targetClass = eventType.classOrNull?.owner as? org.jetbrains.kotlin.ir.declarations.IrClass
-                                                    val constructor = targetClass?.constructors?.firstOrNull { it.isPrimary }
-                                                    val arg = if (constructor != null) {
-                                                        irCall(constructor.symbol).apply { putValueArgument(0, irGet(polledIdx)) }
-                                                    } else {
-                                                        irGet(polledIdx)
-                                                    }
-                                                    +irCall(handler.symbol).apply { putValueArgument(0, arg) }
-                                                    +irCall(commitPollPartitionFunc.symbol).apply {
-                                                        dispatchReceiver = irGet(chanValLocal)
-                                                        putValueArgument(0, irInt(i))
-                                                    }
+                                    val targetClass = eventType.classOrNull?.owner as? org.jetbrains.kotlin.ir.declarations.IrClass
+                                    val constructor = targetClass?.constructors?.firstOrNull { it.isPrimary }
+                                    val arg = if (constructor != null) {
+                                        irCall(constructor.symbol).apply { putValueArgument(0, irGet(polledIdx)) }
+                                    } else {
+                                        irGet(polledIdx)
+                                    }
+
+                                    // Telemetry weave
+                                    val hasObserve = handler.hasAnnotation(FqName("dev.autumn.annotations.Observe"))
+                                    val clockClass = pluginContext.referenceClass(ClassId.topLevel(FqName("dev.autumn.scheduler.AutumnClock")))?.owner
+                                    val nowFunc = clockClass?.functions?.firstOrNull { it.name.asString() == "now" }
+                                    val histogramClass = pluginContext.referenceClass(ClassId.topLevel(FqName("dev.autumn.observatory.LatencyHistogram")))?.owner
+                                    val recordDeltaFunc = histogramClass?.functions?.firstOrNull { it.name.asString() == "recordDelta" }
+                                    
+                                    var targetHistogram: IrProperty? = null
+                                    declaration.file.declarations.forEach {
+                                        if (it is IrProperty && it.name.asString().contains("Histogram")) {
+                                            targetHistogram = it
+                                        }
+                                    }
+
+                                    if (hasObserve && nowFunc != null && recordDeltaFunc != null && targetHistogram != null) {
+                                        messageCollector.report(CompilerMessageSeverity.INFO, "[Autumn Observatory] Weaving telemetry around '${handler.name.asString()}' outside capture.")
+                                        val rdtscStart = irTemporary(irCall(nowFunc.symbol).apply {
+                                            dispatchReceiver = irGetObject(clockClass.symbol)
+                                        }, "rdtscStart")
+                                        
+                                        +irCall(handler.symbol).apply { putValueArgument(0, arg) }
+                                        
+                                        val rdtscEnd = irCall(nowFunc.symbol).apply {
+                                            dispatchReceiver = irGetObject(clockClass.symbol)
+                                        }
+                                        val longMinus = pluginContext.irBuiltIns.longClass.owner.functions.first { 
+                                            it.name.asString() == "minus" && it.valueParameters[0].type == pluginContext.irBuiltIns.longType 
+                                        }
+                                        val delta = irCall(longMinus.symbol).apply {
+                                            dispatchReceiver = rdtscEnd
+                                            putValueArgument(0, irGet(rdtscStart))
+                                        }
+                                        val histogramGetter = targetHistogram.getter?.symbol
+                                        if (histogramGetter != null) {
+                                            +irCall(recordDeltaFunc.symbol).apply {
+                                                dispatchReceiver = irCall(histogramGetter)
+                                                putValueArgument(0, delta)
+                                            }
+                                        }
+                                    } else {
+                                        +irCall(handler.symbol).apply { putValueArgument(0, arg) }
+                                    }
+                                    
+                                    +irCall(commitPollFunc.symbol).apply { dispatchReceiver = irGet(chanValLocal) }
+
                                                 }
                                             )
                                             +ifNotMinusOne
@@ -216,7 +257,49 @@ class TopologySynthesisTransformer(
                                         } else {
                                             irGet(polledIdxLoop)
                                         }
-                                        +irCall(handler.symbol).apply { putValueArgument(0, arg) }
+
+                                        // Telemetry weave
+                                        val hasObserve = handler.hasAnnotation(FqName("dev.autumn.annotations.Observe"))
+                                        val clockClass = pluginContext.referenceClass(ClassId.topLevel(FqName("dev.autumn.scheduler.AutumnClock")))?.owner
+                                        val nowFunc = clockClass?.functions?.firstOrNull { it.name.asString() == "now" }
+                                        val histogramClass = pluginContext.referenceClass(ClassId.topLevel(FqName("dev.autumn.observatory.LatencyHistogram")))?.owner
+                                        val recordDeltaFunc = histogramClass?.functions?.firstOrNull { it.name.asString() == "recordDelta" }
+                                        
+                                        var targetHistogram: IrProperty? = null
+                                        declaration.file.declarations.forEach {
+                                            if (it is IrProperty && it.name.asString().contains("Histogram")) {
+                                                targetHistogram = it
+                                            }
+                                        }
+
+                                        if (hasObserve && nowFunc != null && recordDeltaFunc != null && targetHistogram != null) {
+                                            val rdtscStart = irTemporary(irCall(nowFunc.symbol).apply {
+                                                dispatchReceiver = irGetObject(clockClass.symbol)
+                                            }, "rdtscStart")
+                                            
+                                            +irCall(handler.symbol).apply { putValueArgument(0, arg) }
+                                            
+                                            val rdtscEnd = irCall(nowFunc.symbol).apply {
+                                                dispatchReceiver = irGetObject(clockClass.symbol)
+                                            }
+                                            val longMinus = pluginContext.irBuiltIns.longClass.owner.functions.first { 
+                                                it.name.asString() == "minus" && it.valueParameters[0].type == pluginContext.irBuiltIns.longType 
+                                            }
+                                            val delta = irCall(longMinus.symbol).apply {
+                                                dispatchReceiver = rdtscEnd
+                                                putValueArgument(0, irGet(rdtscStart))
+                                            }
+                                            val histogramGetter = targetHistogram.getter?.symbol
+                                            if (histogramGetter != null) {
+                                                +irCall(recordDeltaFunc.symbol).apply {
+                                                    dispatchReceiver = irCall(histogramGetter)
+                                                    putValueArgument(0, delta)
+                                                }
+                                            }
+                                        } else {
+                                            +irCall(handler.symbol).apply { putValueArgument(0, arg) }
+                                        }
+
                                         +irCall(commitPollFunc.symbol).apply { dispatchReceiver = irGet(chanVal) }
                                         
                                         val intPlus = pluginContext.irBuiltIns.intClass.owner.functions.find { it.name.asString() == "plus" && it.valueParameters[0].type == pluginContext.irBuiltIns.intType }?.symbol

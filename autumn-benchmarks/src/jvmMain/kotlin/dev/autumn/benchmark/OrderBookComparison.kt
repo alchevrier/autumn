@@ -93,13 +93,12 @@ val inboundNetwork = dev.autumn.channel.AutumnChannel<OrderEvent>(16777216)
 
 @LongLived
 val metricsHistogram = LatencyHistogram(baseOffset = 16777216 * 15, capacity = MESSAGE_COUNT)
-val enqueueTimes = LongArray(MESSAGE_COUNT)
 
 var startTime = 0L
 
+@Observe
 @LongLived
 fun onInboundNetwork(idx: Int) {
-    val handleStart = System.nanoTime()
     val event = OrderEvent(idx)
     val px = event.price
     val baseOffset = px * MAX_ORDERS_PER_LEVEL
@@ -112,7 +111,6 @@ fun onInboundNetwork(idx: Int) {
         levelDepthCounters[px] = depth + 1
     }
     
-    metricsHistogram.recordDelta(System.nanoTime() - enqueueTimes[event.ref.toInt()])
     if (event.ref == MESSAGE_COUNT.toLong() - 1L) {
         val endTime = System.nanoTime()
         val nanos = endTime - startTime
@@ -186,7 +184,6 @@ fun bootstrapAutumnPipeline() {
             order.ref = i.toLong() 
             order.shares = 100 
             order.price = (i % 500) + 5000 
-            enqueueTimes[i] = System.nanoTime()
             inboundNetwork.commitNext()
         }
     }.start()

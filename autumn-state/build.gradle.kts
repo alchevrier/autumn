@@ -6,6 +6,7 @@ plugins {
 kotlin {
     jvm()
     js(IR) { nodejs() }
+    wasmJs { browser() }
 
     sourceSets {
         commonMain.dependencies {

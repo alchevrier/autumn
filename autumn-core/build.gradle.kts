@@ -5,6 +5,7 @@ plugins {
 kotlin {
     jvm()
     js(IR) { nodejs() }
+    wasmJs { browser() }
     
     linuxX64 {
         compilations.getByName("main") {

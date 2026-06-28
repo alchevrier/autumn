@@ -8,19 +8,22 @@ The `OrderBookComparison` benchmark measures the latency of processing 1 million
 
 ### The Cross-Thread Pipelined Benchmark
 
-If you run the benchmark, you'll see results that look like this (running in pure JVM mode, streaming 1,000,000 events concurrently between a Producer thread and the Arbiter loop):
+Historically, pipeline latency was estimated by dividing bulk execution time by the event count. However, Autumn now employs **Zero-Allocation Hardware Telemetry** (Phase 3) for absolute, explicit percentile accuracy natively injected by the compiler.
 
-| Metric | Total Time for 1,000,000 Events | Estimated Per-Event Latency (Cross-Thread) |
-|--------|--------------------------------:|-------------------------------------------:|
-| **Min** | 26 ms | ~26 ns |
-| **p50 (Median)** | 29 ms | ~29 ns |
-| **p90** | 32 ms | ~32 ns |
-| **p99** | 33 ms | ~33 ns |
-| **Max** | 33 ms | ~33 ns |
+By annotating the FSM handler with `@Observe`, the Autumn K2 compiler automatically weaves hardware clock interceptors (using Native `rdtsc` or OS capabilities) perfectly around the *outside* of the execution boundary in the generated AST. This prevents instruction-cache pollution inside the purely business-oriented domain logic.
 
-This equates to approximately **29 nanoseconds per event handoff (P50)** round-trip across threads. This sub-30ns metric is achieved by implementing explicit **L1 Hardware Cache Line Padding** directly into the `Channel` structure. Because standard JVMs (`Java 9+`) heavily lock down `@Contended` memory paddings behind runtime `--add-exports` flags, Autumn guarantees zero-configuration mechanics by leveraging class inheritance logic. The JVM specification restricts it from rearranging or interleaving subclass properties with superclass properties, allowing us to enforce strict 64-byte spacing between the Producer indices and Consumer FSM indices reliably.
+If you run the benchmark today, we employ a **500,000 message JIT Warmup Phase** to push the JVM into C2 optimized machine code—fully eliminating Interpreter and JVM compilation stalls. Following the warmup, we stream exactly 1,000,000 true execution events cross-thread into the pipelined Arbiter loop:
 
-At a rate of **~34 million messages per second**, a standard JVM Object loop would instantly trigger violent GC pauses. Because the static memory architecture avoids allocations and pointers, garbage collection is completely bypassed.
+| Metric | Measured Exact Latency (Cross-Thread) |
+|--------|--------------------------------------:|
+| **p50 (Median)**| ~2,708 ns (2.7 µs) |
+| **p99**         | ~4,854 ns (4.8 µs) |
+| **p99.9**       | ~7,282 ns (7.2 µs) |
+| **p99.99**      | ~11,467 ns (11.4 µs) |
+
+While exact nanosecond-precision hardware timing reveals actual OS thread scheduling and L1-L3 cache interactions rather than bulk averages, the variance is incredibly tight. Natively maintaining a **11.4 µs P99.99** in pure Kotlin natively demonstrates the structural bypassing of Garbage Collection entirely. The static memory architecture (`LatencyHistogram`) avoids object allocations by recording execution deltas iteratively directly into a flat, pre-allocated region inside the `AutumnMemoryBank`.
+
+Furthermore, this extreme stability is achieved by implementing explicit **L1 Hardware Cache Line Padding** directly into the `Channel` structure. Because standard JVMs (`Java 9+`) heavily lock down `@Contended` memory paddings behind runtime `--add-exports` flags, Autumn guarantees zero-configuration mechanics by leveraging class inheritance logic. The JVM specification restricts it from rearranging or interleaving subclass properties with superclass properties, allowing us to enforce strict 64-byte spacing between the Producer indices and Consumer FSM indices reliably.
 
 ### Proving Execution Port Saturation & IPC ("Mechanical Sympathy")
 

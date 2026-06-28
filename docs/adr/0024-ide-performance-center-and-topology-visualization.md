@@ -30,6 +30,13 @@ We will construct an `autumn-ide-plugin` (targeting IntelliJ / Kotlin Language S
    - The plugin will simulate instruction-level parallelism (similar to LLVM Machine Code Analyzer `llvm-mca`) against the projected native translation.
    - It will map the IR down to execution port usage (e.g., ALU vs. AGU utilization), highlighting if a pipeline is bottlenecked on instruction ports while others sit idle natively, thereby guiding the developer towards loop-unrolling or spatial layout adjustments.
 
+
+
+5. **Target Platform & Core Topography Awareness:**
+   - Developers can select their deployment hardware target (e.g., Intel Skylake, AMD Zen 4) and total core count directly within the IDE plugin.
+   - Using this selected profile, the Performance Center will visualize core-to-channel pinning, identify cross-core bottlenecks, and project NUMA/L3 cache latency penalties instantly as they code.
+   - This ensures simulated execution metrics flawlessly match the actual deployed production environment conditions.
+
 ## Rationale
 - **The FPGA Hardware Model:** Building deterministic systems requires developers to view their logic conceptually as circuits constrained natively by physical limits. By elevating cycles and L1 cache sizes to the status of IDE syntax errors, developers are forced to think spatially.
 - **Unified Feedback Loop:** Waiting for a pipeline benchmark to crash or report latency is incredibly inefficient. Surfacing the `CycleBudgetVisitor` and `ThreadCacheBudgetVisitor` outputs live against the IDE text buffer short-circuits the pipeline from hours down to milliseconds.

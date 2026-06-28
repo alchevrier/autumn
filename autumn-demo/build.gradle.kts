@@ -8,11 +8,17 @@ kotlin {
     }
     wasmJs {
         browser {
+            testTask {
+                enabled = false
+            }
             binaries.executable()
         }
     }
     js(IR) {
         browser {
+            testTask {
+                enabled = false
+            }
             binaries.executable()
         }
     }

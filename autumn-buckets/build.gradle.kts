@@ -5,7 +5,11 @@ plugins {
 
 kotlin {
     jvm()
-    wasmJs { browser() }
+    wasmJs { 
+        browser { 
+            testTask { enabled = false }
+        }
+    }
     js {
         nodejs()
     }

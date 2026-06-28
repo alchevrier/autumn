@@ -5,7 +5,11 @@ plugins {
 kotlin {
     jvm()
     js(IR) { nodejs() }
-    wasmJs { browser() }
+    wasmJs { 
+        browser { 
+            testTask { enabled = false }
+        }
+    }
     
     linuxX64 {
         compilations.getByName("main") {

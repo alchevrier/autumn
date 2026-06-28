@@ -47,9 +47,10 @@ class PipelinedSoATransformer(
 ) : IrElementTransformerVoidWithContext() {
 
     private val PIPELINED_FQ_NAME = FqName("dev.autumn.annotations.Pipelined")
-    private val NETWORK_CHANNEL_FQ_NAME = FqName("dev.autumn.annotations.NetworkChannel")
+    private val BOUNDARY_CHANNEL_FQ_NAME = FqName("dev.autumn.annotations.BoundaryChannel")
     private val REGISTER_CHANNEL_FQ_NAME = FqName("dev.autumn.annotations.RegisterChannel")
     private val COLD_CHANNEL_FQ_NAME = FqName("dev.autumn.annotations.ColdChannel")
+    private val SESSION_CHANNEL_FQ_NAME = FqName("dev.autumn.annotations.SessionChannel")
 
     private val propertyLocalSoAByteOffsets = mutableMapOf<String, MutableMap<String, Int>>()
     private val propertyByteSizes = mutableMapOf<String, MutableMap<String, Int>>()
@@ -73,21 +74,24 @@ class PipelinedSoATransformer(
             
             override fun visitProperty(declaration: IrProperty) {
                 if (declaration.hasAnnotation(REGISTER_CHANNEL_FQ_NAME) || 
-                    declaration.hasAnnotation(NETWORK_CHANNEL_FQ_NAME) || 
+                    declaration.hasAnnotation(BOUNDARY_CHANNEL_FQ_NAME) || 
+                    declaration.hasAnnotation(SESSION_CHANNEL_FQ_NAME) || 
                     declaration.hasAnnotation(COLD_CHANNEL_FQ_NAME)) {
                     
                     val isReg = declaration.hasAnnotation(REGISTER_CHANNEL_FQ_NAME)
-                    val isNet = declaration.hasAnnotation(NETWORK_CHANNEL_FQ_NAME)
+                    val isNet = declaration.hasAnnotation(BOUNDARY_CHANNEL_FQ_NAME)
+                    val isSession = declaration.hasAnnotation(SESSION_CHANNEL_FQ_NAME)
                     val isCold = declaration.hasAnnotation(COLD_CHANNEL_FQ_NAME)
                     
                     val targetAnnotation = when {
                         isReg -> REGISTER_CHANNEL_FQ_NAME
-                        isNet -> NETWORK_CHANNEL_FQ_NAME
+                        isNet -> BOUNDARY_CHANNEL_FQ_NAME
+                        isSession -> SESSION_CHANNEL_FQ_NAME
                         else -> COLD_CHANNEL_FQ_NAME
                     }
                     
                     val annot = declaration.getAnnotation(targetAnnotation)
-                    val capArgument = if (isNet || isReg) annot?.getValueArgument(0) as? IrConst else null
+                    val capArgument = if (isNet || isReg || isSession) annot?.getValueArgument(0) as? IrConst else null
                     val baseCapacity = 16777216
                     
                     val shardedArg = annot?.getValueArgument(2) as? IrConst
@@ -181,7 +185,8 @@ class PipelinedSoATransformer(
 
     override fun visitPropertyNew(declaration: IrProperty): IrStatement {
         if (declaration.hasAnnotation(REGISTER_CHANNEL_FQ_NAME) || 
-            declaration.hasAnnotation(NETWORK_CHANNEL_FQ_NAME) ||
+            declaration.hasAnnotation(BOUNDARY_CHANNEL_FQ_NAME) ||
+            declaration.hasAnnotation(SESSION_CHANNEL_FQ_NAME) ||
             declaration.hasAnnotation(COLD_CHANNEL_FQ_NAME)) {
 
             val offset = channelIndexOffsets[declaration.name.asString()]

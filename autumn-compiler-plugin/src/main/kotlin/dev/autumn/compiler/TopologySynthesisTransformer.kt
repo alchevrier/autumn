@@ -25,8 +25,9 @@ class TopologySynthesisTransformer(
     private val messageCollector: MessageCollector
 ) : IrElementTransformerVoidWithContext() {
 
-    private val NETWORK_CHANNEL_FQ = FqName("dev.autumn.annotations.NetworkChannel")
+    private val BOUNDARY_CHANNEL_FQ = FqName("dev.autumn.annotations.BoundaryChannel")
     private val COLD_CHANNEL_FQ = FqName("dev.autumn.annotations.ColdChannel")
+    private val SESSION_CHANNEL_FQ = FqName("dev.autumn.annotations.SessionChannel")
     private val REGISTER_CHANNEL_FQ = FqName("dev.autumn.annotations.RegisterChannel")
 
     data class ChannelTopologyInfo(
@@ -41,14 +42,16 @@ class TopologySynthesisTransformer(
     private val discoveredChannels = mutableListOf<ChannelTopologyInfo>()
 
     override fun visitPropertyNew(declaration: IrProperty): IrStatement {
-        val isNet = declaration.hasAnnotation(NETWORK_CHANNEL_FQ)
+        val isNet = declaration.hasAnnotation(BOUNDARY_CHANNEL_FQ)
         val isCold = declaration.hasAnnotation(COLD_CHANNEL_FQ)
+        val isSession = declaration.hasAnnotation(SESSION_CHANNEL_FQ)
         val isReg = declaration.hasAnnotation(REGISTER_CHANNEL_FQ)
 
-        if (isNet || isCold || isReg) {
+        if (isNet || isCold || isSession || isReg) {
             val annot = when {
-                isNet -> declaration.getAnnotation(NETWORK_CHANNEL_FQ)
+                isNet -> declaration.getAnnotation(BOUNDARY_CHANNEL_FQ)
                 isCold -> declaration.getAnnotation(COLD_CHANNEL_FQ)
+                isSession -> declaration.getAnnotation(SESSION_CHANNEL_FQ)
                 else -> declaration.getAnnotation(REGISTER_CHANNEL_FQ)
             }
             
@@ -59,6 +62,7 @@ class TopologySynthesisTransformer(
             val weight = (weightArgument?.value as? Int) ?: when {
                 isNet -> 100
                 isCold -> 1
+                isSession -> 10
                 else -> 10
             }
 
@@ -66,8 +70,9 @@ class TopologySynthesisTransformer(
             val sharded = (shardedArgument?.value as? Int) ?: 1
 
             val type = when {
-                isNet -> "HOT_NETWORK"
-                isCold -> "COLD_SHARED"
+                isNet -> "HOT_NETWORK" // Legacy type name, indicates Hot->Hot Boundary
+                isCold -> "COLD_SHARED" // Hot->Cold Observatory
+                isSession -> "SESSION" // Cold->Hot 
                 else -> "REGISTER"
             }
 

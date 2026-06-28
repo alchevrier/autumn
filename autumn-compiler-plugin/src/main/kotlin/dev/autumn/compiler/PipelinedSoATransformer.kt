@@ -274,7 +274,7 @@ class PipelinedSoATransformer(
                 val builder = DeclarationIrBuilder(pluginContext, expression.symbol)
                 val offerCall = builder.irCall(offerFunc.symbol).apply {
                     dispatchReceiver = expression.dispatchReceiver
-                    putValueArgument(0, expression.getValueArgument(0))
+                    // No arguments for next() or nextIndex()
                 }
                 
                 val targetClass = expression.type.classOrNull?.owner as? IrClass
@@ -298,7 +298,7 @@ class PipelinedSoATransformer(
                 val builder = DeclarationIrBuilder(pluginContext, expression.symbol)
                 return builder.irCall(commitOfferFunc.symbol).apply {
                     dispatchReceiver = expression.dispatchReceiver
-                    putValueArgument(0, expression.getValueArgument(0))
+                    // No arguments for next() or nextIndex()
                 }
             }
         }

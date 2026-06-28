@@ -3,7 +3,7 @@ package dev.autumn.scheduler
 private fun getPerformanceNow(): Double = js("window.performance.now()")
 
 /**
- * Wasm implementation binding non-allocating JS DOM performance timer 
+ * JS implementation binding non-allocating JS DOM performance timer 
  * converted to nanosecond-equivalent offsets.
  */
 actual object AutumnClock {

@@ -26,6 +26,7 @@ include(
     "autumn-core",
     "autumn-state",
     "autumn-buckets",
+    "autumn-observatory",
     "autumn-resolver",
     "autumn-config",
     "autumn-ui",

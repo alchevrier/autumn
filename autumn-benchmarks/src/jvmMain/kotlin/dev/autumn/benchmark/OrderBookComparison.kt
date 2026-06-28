@@ -1,6 +1,7 @@
 package dev.autumn.benchmark
 
 import dev.autumn.annotations.*
+import dev.autumn.observatory.LatencyHistogram
 import dev.autumn.channel.Channel
 import dev.autumn.memory.AutumnMemoryBank
 import kotlin.system.measureNanoTime
@@ -90,10 +91,15 @@ var levelDepthCounters = IntArray(TICK_LEVELS)
 @Speculative(burstWindow = 400)
 val inboundNetwork = dev.autumn.channel.AutumnChannel<OrderEvent>(16777216)
 
+@LongLived
+val metricsHistogram = LatencyHistogram(baseOffset = 16777216 * 15, capacity = MESSAGE_COUNT)
+val enqueueTimes = LongArray(MESSAGE_COUNT)
+
 var startTime = 0L
 
 @LongLived
 fun onInboundNetwork(idx: Int) {
+    val handleStart = System.nanoTime()
     val event = OrderEvent(idx)
     val px = event.price
     val baseOffset = px * MAX_ORDERS_PER_LEVEL
@@ -106,10 +112,16 @@ fun onInboundNetwork(idx: Int) {
         levelDepthCounters[px] = depth + 1
     }
     
+    metricsHistogram.recordDelta(System.nanoTime() - enqueueTimes[event.ref.toInt()])
     if (event.ref == MESSAGE_COUNT.toLong() - 1L) {
         val endTime = System.nanoTime()
         val nanos = endTime - startTime
         println("[Autumn] Pipelined SoA + Arbiter Loop Time: ${nanos / 1_000_000} ms")
+        
+        println("[Autumn Observatory] P50 Latency : ${metricsHistogram.calculatePercentile(50.0)} ns")
+        println("[Autumn Observatory] P99 Latency : ${metricsHistogram.calculatePercentile(99.0)} ns")
+        println("[Autumn Observatory] P99.9 Latency: ${metricsHistogram.calculatePercentile(99.9)} ns")
+        println("[Autumn Observatory] P99.99 Latency: ${metricsHistogram.calculatePercentile(99.99)} ns")
         
         // Correctness Verification (Adds overhead but proves K2 offset math)
         // Commented out to ensure JIT compiler tightly inlines the hot path!
@@ -174,6 +186,7 @@ fun bootstrapAutumnPipeline() {
             order.ref = i.toLong() 
             order.shares = 100 
             order.price = (i % 500) + 5000 
+            enqueueTimes[i] = System.nanoTime()
             inboundNetwork.commitNext()
         }
     }.start()

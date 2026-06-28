@@ -17,6 +17,7 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 implementation(project(":autumn-core"))
+                implementation(project(":autumn-observatory"))
                 implementation(project(":autumn-buckets"))
                 implementation(project(":autumn-ui"))
                 implementation(project(":autumn-resolver"))

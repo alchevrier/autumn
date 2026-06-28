@@ -39,6 +39,24 @@ class AutumnScheduler(
 
     private val arbiters = mutableListOf<Arbiter>()
     private val staticTicks = mutableListOf<() -> Boolean>()
+    
+    // The physical oscillator that pulses this scheduler bounds
+    private val oscillator = HardwareOscillator(this)
+
+    /**
+     * Commences the physical Clock Tick loop via the platform-idiomatic oscillator.
+     * @param coreId The physical OS core (isolcpus) to pin to (JVM/Native only). 
+     */
+    fun start(coreId: Int = -1) {
+        oscillator.start(coreId)
+    }
+
+    /**
+     * Halts the hardware oscillator execution.
+     */
+    fun stop() {
+        oscillator.stop()
+    }
 
     /**
      * Mounts a dynamic Arbiter (execution pipeline) onto this hardware clock.

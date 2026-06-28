@@ -87,6 +87,7 @@ var levelDepthCounters = IntArray(TICK_LEVELS)
 
 @LongLived
 @BoundaryChannel(capacity = 16777216, weight = 100)
+@Speculative(burstWindow = 400)
 val inboundNetwork = dev.autumn.channel.AutumnChannel<OrderEvent>(16777216)
 
 var startTime = 0L

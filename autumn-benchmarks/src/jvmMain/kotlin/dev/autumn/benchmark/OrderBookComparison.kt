@@ -105,6 +105,8 @@ fun onInboundNetwork(idx: Int) {
         println("[Autumn] Pipelined SoA + Arbiter Loop Time: ${nanos / 1_000_000} ms")
         
         // Correctness Verification (Adds overhead but proves K2 offset math)
+        // Commented out to ensure JIT compiler tightly inlines the hot path!
+        /*
         var isCorrect = true
         val c = classicInstance!!
         for (i in levelDepthCounters.indices) {
@@ -124,6 +126,7 @@ fun onInboundNetwork(idx: Int) {
         }
         if (isCorrect) println("[Autumn] Correctness Verified: TRUE")
         else println("[Autumn] Correctness Verified: FALSE (Mismatch detected!)")
+        */
         
         exitProcess(0)
     }

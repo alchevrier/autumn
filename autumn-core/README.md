@@ -10,9 +10,9 @@ graph TD
         direction TB
         
         subgraph Pacts ["Compiler Pacts (Annotations)"]
-            A1[@Pipelined]
-            A2[@NetworkChannel]
-            A3[@LongLived / @InjectTopology]
+            A1["@Pipelined"]
+            A2["@NetworkChannel"]
+            A3["@LongLived / @InjectTopology"]
         end
         
         subgraph Exec ["Execution (Time-Triggered)"]

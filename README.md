@@ -286,3 +286,47 @@ fun AutumnScreen(binder: MyScreenBinder) {
 ```
 
 Because Autumn handles the payloads purely natively as bytes, making the network request does not fill the garbage collector. The OS socket bytes sit in `StringRegistry`, the `EpochStateEngine` evaluates the exact slot mutations, and Compose only executes a String allocation inside `resolveTextPrimitive` when drawing the physical pixel!
+
+
+## Target Profiles & Installation
+
+Autumn is strictly modular. You only pay for what you pull. The Autumn K2 Compiler Gradle plugin must be applied to the project, and then you select the runtime dependencies based on your physical target constraint.
+
+### 1. Bare-Metal High-Frequency Trading (Linux LLVM / JVM Server)
+For zero-copy network ingestion, native parsing, and hardware telemetry.
+```kotlin
+plugins {
+    id("io.github.alchevrier.autumn.compiler") version "1.1.0"
+}
+dependencies {
+    implementation("io.github.alchevrier:autumn-core:1.1.0")
+    implementation("io.github.alchevrier:autumn-resolver:1.1.0")    // Sockets & Network bounds
+    implementation("io.github.alchevrier:autumn-observatory:1.1.0") // Zero-allocation telemetry
+}
+```
+
+### 2. Deterministic Mobile & Web (iOS, Android, WebAssembly)
+For 120fps stutter-free Jetpack Compose / SwiftUI applications driven by purely static arrays.
+```kotlin
+plugins {
+    id("io.github.alchevrier.autumn.compiler") version "1.1.0"
+}
+dependencies {
+    implementation("io.github.alchevrier:autumn-core:1.1.0")
+    implementation("io.github.alchevrier:autumn-state:1.1.0") // EpochStateEngine / Reactivity
+    implementation("io.github.alchevrier:autumn-ui:1.1.0")    // Canvas / Pixel bindings
+}
+```
+
+### 3. Game Engines & Embedded Databases (ECS Architecture)
+For heavy flat-mapped SoA (Structure of Arrays) state, configs, and raw binary string pooling.
+```kotlin
+plugins {
+    id("io.github.alchevrier.autumn.compiler") version "1.1.0"
+}
+dependencies {
+    implementation("io.github.alchevrier:autumn-core:1.1.0")
+    implementation("io.github.alchevrier:autumn-config:1.1.0")  // JSON / schema registry without GC
+    implementation("io.github.alchevrier:autumn-buckets:1.1.0") // Zero-copy String representations
+}
+```

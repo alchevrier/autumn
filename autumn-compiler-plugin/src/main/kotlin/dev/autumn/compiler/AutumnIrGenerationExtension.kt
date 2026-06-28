@@ -37,8 +37,15 @@ class AutumnIrGenerationExtension(
             // moduleFragment.transform(initializationTransformer, null)
         }
 
+
         // 5. Synthesize continuous Dataflow topologies (Network, Cold, Register Channels) into a unified Arbiter schedule.
         val topologyTransformer = TopologySynthesisTransformer(pluginContext, messageCollector)
         moduleFragment.transform(topologyTransformer, null)
+        
+        // 6. Export the final Topology and execution bounds to a local JSON artifact for the IDE Plugin to ingest natively!
+        
+        TopologyExportSerializer.dumpToJson("/home/alchevrier/Repositories/autumn/build/reports/autumn", messageCollector)
     }
 }
+
+

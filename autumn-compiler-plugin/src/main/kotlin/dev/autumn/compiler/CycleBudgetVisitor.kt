@@ -45,10 +45,30 @@ class CycleBudgetVisitor(
                 }
             }, null)
 
+
             val severity = if (estimatedCycles > budgetLimit) CompilerMessageSeverity.ERROR else CompilerMessageSeverity.INFO
             val state = if (estimatedCycles > budgetLimit) "VIOLATION" else "VERIFIED"
 
+            // --- INJECT JSON RECORD ---
+            var targetChannel = ""
+            if (declaration.hasAnnotation(FqName("dev.autumn.annotations.Observe"))) {
+                val obs = declaration.getAnnotation(FqName("dev.autumn.annotations.Observe"))
+                val nameArg = obs?.getValueArgument(0) as? IrConst
+                targetChannel = (nameArg?.value as? String) ?: ""
+            }
+            TopologyExportSerializer.components.add(
+                TopologyExportSerializer.Component(
+                    type = "Handler",
+                    name = declaration.name.asString(),
+                    cycles = estimatedCycles,
+                    portPressure = if (estimatedCycles > budgetLimit) "HIGH" else "NORMAL",
+                    target = targetChannel
+                )
+            )
+            // --------------------------
+
             messageCollector.report(
+
                 severity,
                 "[Autumn HLS] Cycle Budget $state: '${declaration.name.asString()}' estimated at $estimatedCycles cycles (Limit: $budgetLimit)."
             )

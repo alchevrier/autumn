@@ -99,7 +99,14 @@ val motherboard = AutumnMotherboard(
 @LongLived
 val binder = DemoCircuitBinder(motherboard)
 
+
+fun bindNavigate(fn: (String) -> Unit): Unit = js("window.autumnNavigate = fn")
+fun bindFilter(fn: (String) -> Unit): Unit = js("window.autumnFilter = fn")
+
 fun main() {
+    bindNavigate(::autumnNavigateCallback)
+    bindFilter(::autumnFilterCallback)
+
     binder.attachToInterruptWire(GlobalScope) {
         binder.renderTo("root")
     }
@@ -113,8 +120,7 @@ fun main() {
     }
 }
 
-@JsExport
-fun autumnNavigate(target: String) {
+fun autumnNavigateCallback(target: String) {
     if (!target.contains("query=")) {
         currentFilter = ""
     }
@@ -127,8 +133,7 @@ fun autumnNavigate(target: String) {
     }
 }
 
-@JsExport
-fun autumnFilter(query: String) {
+fun autumnFilterCallback(query: String) {
     currentFilter = query
     binder.currentFocusId = "autumn-search"
     window.clearTimeout(filterTimeout)

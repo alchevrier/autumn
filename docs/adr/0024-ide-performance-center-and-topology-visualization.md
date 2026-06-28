@@ -37,6 +37,13 @@ We will construct an `autumn-ide-plugin` (targeting IntelliJ / Kotlin Language S
    - Using this selected profile, the Performance Center will visualize core-to-channel pinning, identify cross-core bottlenecks, and project NUMA/L3 cache latency penalties instantly as they code.
    - This ensures simulated execution metrics flawlessly match the actual deployed production environment conditions.
 
+
+6. **Multi-Platform Target Extensibility (iOS, Android, JVM):**
+   - While the primary domain focuses on bare-metal native constraints, the overarching framework targets Kotlin Multiplatform (KMP). The Performance Center must adjust profiling models to account for the specificities of different targets.
+   - For a JVM server target, it will surface allocation paths that trigger Garbage Collection (GC) pauses instead of raw cycle limits.
+   - For mobile targets (iOS/Android), the simulator will model ART/Dalvik overheads or Apple Silicon ARM execution characteristics and thermal throttling considerations.
+   - This ensures the topological mapping provides native-level visibility on any supported backend.
+
 ## Rationale
 - **The FPGA Hardware Model:** Building deterministic systems requires developers to view their logic conceptually as circuits constrained natively by physical limits. By elevating cycles and L1 cache sizes to the status of IDE syntax errors, developers are forced to think spatially.
 - **Unified Feedback Loop:** Waiting for a pipeline benchmark to crash or report latency is incredibly inefficient. Surfacing the `CycleBudgetVisitor` and `ThreadCacheBudgetVisitor` outputs live against the IDE text buffer short-circuits the pipeline from hours down to milliseconds.

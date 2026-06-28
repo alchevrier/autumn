@@ -8,10 +8,22 @@ actual class HardwareOscillator actual constructor(private val scheduler: Autumn
     // JVM thread interruption is a far safer mechanism for external halt signals.
     private var isRunning = false
     private var oscillatorThread: Thread? = null
+    private var androidCallbackRef: Any? = null
 
     actual fun start(coreId: Int) {
         if (isRunning) return
         isRunning = true
+
+        if (AndroidChoreographer.isAndroid) {
+            println("[Autumn OS] Activating Android Choreographer VSYNC native hook.")
+            androidCallbackRef = try {
+                AndroidChoreographer.start(scheduler)
+            } catch (e: Throwable) {
+                println("[Autumn OS] Failed to bind Choreographer: ${e.message}. Falling back to standard JVM thread.")
+                null
+            }
+            if (androidCallbackRef != null) return
+        }
 
         oscillatorThread = thread(start = true, name = "autumn-oscillator-core-$coreId") {
             if (coreId >= 0) {
@@ -73,6 +85,17 @@ actual class HardwareOscillator actual constructor(private val scheduler: Autumn
 
     actual fun stop() {
         isRunning = false
+
+        if (androidCallbackRef != null) {
+            try {
+                AndroidChoreographer.stop(androidCallbackRef!!)
+            } catch (e: Throwable) {
+                // Ignore reflections errors on stop
+            }
+            androidCallbackRef = null
+            return
+        }
+
         // Interruption bypasses the standard variable read boundary
         // and guarantees wake-up if the thread is suspended in `SLEEPING` PowerMode (parkNanos).
         oscillatorThread?.interrupt()

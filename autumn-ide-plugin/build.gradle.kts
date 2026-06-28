@@ -12,14 +12,12 @@ repositories {
 
 dependencies {
     intellijPlatform {
-        intellijIdeaCommunity("2024.1.4") // Targets 2024.1
-        bundledPlugin("org.jetbrains.kotlin") // We'll need Kotlin plugin features to parse FIR/IR 
+        intellijIdeaCommunity("2024.1.4")
+        bundledPlugin("org.jetbrains.kotlin")
         pluginVerifier()
         zipSigner()
         instrumentationTools()
     }
-
-    // Temporarily linking autumn-compiler-plugin until we extract autumn-compiler-shared
     implementation(project(":autumn-compiler-plugin")) 
 }
 
@@ -46,8 +44,12 @@ intellijPlatform {
 tasks {
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
         compilerOptions {
-            jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
             freeCompilerArgs.add("-Xopt-in=kotlin.RequiresOptIn")
         }
+    }
+    withType<JavaCompile> {
+        sourceCompatibility = "17"
+        targetCompatibility = "17"
     }
 }

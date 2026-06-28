@@ -14,6 +14,7 @@
     <depends>org.jetbrains.kotlin</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <!-- Add your extensions here: toolWindow, annotator, etc -->
+        <codeInsight.lineMarkerProvider language="kotlin" implementationClass="dev.autumn.ide.CycleBudgetLineMarkerProvider"/>
+        <toolWindow id="Autumn Performance Center" secondary="true" anchor="right" factoryClass="dev.autumn.ide.AutumnPerformanceCenterToolWindow"/>
     </extensions>
 </idea-plugin>

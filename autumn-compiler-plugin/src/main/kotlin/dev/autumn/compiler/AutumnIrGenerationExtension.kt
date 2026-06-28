@@ -44,7 +44,7 @@ class AutumnIrGenerationExtension(
         
         // 6. Export the final Topology and execution bounds to a local JSON artifact for the IDE Plugin to ingest natively!
         
-        TopologyExportSerializer.dumpToJson("/home/alchevrier/Repositories/autumn/build/reports/autumn", messageCollector)
+        TopologyExportSerializer.dumpToJson("build/reports/autumn", messageCollector)
     }
 }
 

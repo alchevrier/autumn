@@ -99,7 +99,6 @@ val metricsHistogram = LatencyHistogram(0, MESSAGE_COUNT)
 var startTime = 0L
 
 @Observe("networkTelemetry")
-@CycleBudget(limit = 200)
 @LongLived
 fun onInboundNetwork(idx: Int) {
     val event = OrderEvent(idx)

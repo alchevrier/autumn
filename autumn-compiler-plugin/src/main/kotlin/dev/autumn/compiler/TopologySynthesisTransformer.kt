@@ -45,7 +45,7 @@ class TopologySynthesisTransformer(
         val isNet = declaration.hasAnnotation(BOUNDARY_CHANNEL_FQ)
         val isCold = declaration.hasAnnotation(COLD_CHANNEL_FQ)
         val isSession = declaration.hasAnnotation(SESSION_CHANNEL_FQ)
-        val isReg = declaration.hasAnnotation(REGISTER_CHANNEL_FQ)
+        val isReg = declaration.hasAnnotation(REGISTER_CHANNEL_FQ) || declaration.hasAnnotation(SESSION_CHANNEL_FQ)
 
         if (isNet || isCold || isSession || isReg) {
             val annot = when {

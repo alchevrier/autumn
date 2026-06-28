@@ -64,9 +64,15 @@ class ClassicOrderBook {
 @Pipelined
 @JvmInline
 value class OrderEvent(val index: Int) {
-    val ref: Long get() = 0L
-    val shares: Int get() = 0
-    val price: Int get() = 0
+    var ref: Long
+        get() = 0L
+        set(value) {}
+    var shares: Int
+        get() = 0
+        set(value) {}
+    var price: Int
+        get() = 0
+        set(value) {}
 }
 
 private val TICK_LEVELS = 10_000 
@@ -159,15 +165,15 @@ fun bootstrapAutumnPipeline() {
     // to measure how fast the loop picks them up! 
     Thread {
         for (i in 0 until MESSAGE_COUNT) {
-            var idx = inboundNetwork.buffer.offer()
-            while (idx == -1) { 
+            var order = inboundNetwork.next()
+            while (order.index == -1) { 
                 Thread.yield() // wait for queue space
-                idx = inboundNetwork.buffer.offer()
+                order = inboundNetwork.next()
             }
-            AutumnMemoryBank.setLong((67108864L + (idx * 8L)).toInt(), i.toLong()) 
-            AutumnMemoryBank.setInt((201326592L + (idx * 4L)).toInt(), 100) 
-            AutumnMemoryBank.setInt((268435456L + (idx * 4L)).toInt(), (i % 500) + 5000) 
-            inboundNetwork.buffer.commitOffer()
+            order.ref = i.toLong() 
+            order.shares = 100 
+            order.price = (i % 500) + 5000 
+            inboundNetwork.commitNext()
         }
     }.start()
 }

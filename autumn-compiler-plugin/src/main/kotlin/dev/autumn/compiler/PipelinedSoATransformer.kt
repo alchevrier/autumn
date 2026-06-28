@@ -263,7 +263,7 @@ class PipelinedSoATransformer(
         if (function.name.asString() == "next") {
             
         }
-        if (functionName == "next" && parentClass?.name?.asString() == "Channel") {
+        if (functionName == "next" && (parentClass?.name?.asString() == "AutumnChannel" || parentClass?.name?.asString() == "Channel")) {
             val offerFunc = parentClass.functions.find { it.name.asString() == "nextIndex" }
             
             if (offerFunc != null) {
@@ -288,7 +288,7 @@ class PipelinedSoATransformer(
                 }
                 return offerCall
             }
-        } else if (functionName == "commitNext" && parentClass?.name?.asString() == "Channel") {
+        } else if (functionName == "commitNext" && parentClass?.name?.asString() == "AutumnChannel") {
             val commitOfferFunc = parentClass.functions.find { it.name.asString() == "commitNextIndex" }
             if (commitOfferFunc != null) {
                 messageCollector.report(

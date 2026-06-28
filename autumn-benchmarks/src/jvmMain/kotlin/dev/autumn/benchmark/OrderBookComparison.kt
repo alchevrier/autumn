@@ -100,6 +100,7 @@ var startTime = 0L
 
 @Observe("networkTelemetry")
 @LongLived
+@CycleBudget(limit = 600) // Elevated budget since Benchmark includes verification/println blocks
 fun onInboundNetwork(idx: Int) {
     val event = OrderEvent(idx)
     val px = event.price

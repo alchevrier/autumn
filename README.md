@@ -65,7 +65,7 @@ This topology uses the structural annotations (`@BoundaryChannel`, `@ColdChannel
                 | @BoundaryChannel (Wait-free SPSC Ring Buffer)
                 v
     +-----------------------+
-    | Autumn Arbiter (FSM)  | <-- Statically synthesized to a deterministic tick() frame
+    | Autumn Arbiter (FSM)  | <-- @Speculative Burst Loop (synthesized tick routing)
     +-----+-----------+-----+
           |           |
           |           | @ColdChannel (Zero-copy multicasting fan-out)
@@ -97,7 +97,7 @@ This topology treats the UI as an external physical display attached to an embed
                 | 
                 v
     +-----------------------+
-    | Epoch State Engine    | <-- Coalesces mutation ticks into a single hardware pulse
+    | Epoch State Engine    | <-- Coalesces via @Speculative UI frame boundaries
     +-----------+-----------+
                 |
                 v

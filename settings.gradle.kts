@@ -33,5 +33,6 @@ include(
     "autumn-compiler-plugin",
     "autumn-sandbox",
     "autumn-demo",
-    "autumn-benchmarks"
+    "autumn-benchmarks",
+    "autumn-ide-plugin"
 )

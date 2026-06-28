@@ -12,7 +12,7 @@ allprojects {
 
 subprojects {
     apply(plugin = "org.jetbrains.kotlinx.kover")
-    if (project.name != "autumn-benchmarks") {
+    if (project.name != "autumn-benchmarks" && project.name != "autumn-ide-plugin") {
         apply(plugin = "com.vanniktech.maven.publish")
     }
 

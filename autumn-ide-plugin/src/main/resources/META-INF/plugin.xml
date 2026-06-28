@@ -1,0 +1,19 @@
+<idea-plugin>
+    <id>dev.autumn.ide</id>
+    <name>Autumn Performance Center</name>
+    <vendor url="https://github.com/alchevrier/autumn">A. L. Chevrier</vendor>
+
+    <description><![CDATA[
+        <p>Circuit-based hardware performance constraints and topology visualization for the Autumn Framework.</p>
+        <p>Provides inline temporal execution lenses, Spatial Budgets, and the Performance Center topology graph natively in the IDE.</p>
+    ]]></description>
+
+    <!-- please see https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html
+         on how to target different products -->
+    <depends>com.intellij.modules.platform</depends>
+    <depends>org.jetbrains.kotlin</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Add your extensions here: toolWindow, annotator, etc -->
+    </extensions>
+</idea-plugin>

@@ -57,7 +57,7 @@ class AutumnPerformanceCenterToolWindow : ToolWindowFactory {
 fun TopologyDashboard(project: Project) {
     var components by remember { mutableStateOf(emptyList<TopologyComponent>()) }
     var lastUpdated by remember { mutableStateOf("") }
-    var selectedTarget by remember { mutableStateOf("JVM") }
+    var selectedTarget by remember { mutableStateOf("JVM (Bytecode)") }
     
     DisposableEffect(project) {
         val timer = timer(period = 2000L) {
@@ -93,7 +93,7 @@ fun TopologyDashboard(project: Project) {
         
         Spacer(modifier = Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("JVM", "Native (Linux/x86_64)", "Native (Apple/ARM64)").forEach { tgt ->
+            listOf("JVM (Bytecode)", "Native (x86_64)").forEach { tgt ->
                 Button(
                     onClick = { selectedTarget = tgt },
                     colors = ButtonDefaults.buttonColors(
@@ -110,8 +110,32 @@ fun TopologyDashboard(project: Project) {
             Text("No Topology Metrics Discovered.", color = Color.Gray)
         } else {
             LazyColumn(modifier = Modifier.weight(1f)) {
-                items(components) { comp ->
-                    ComponentCard(comp, selectedTarget)
+                val channels = components.filter { it.type == "Channel" }
+                val handlers = components.filter { it.type == "Handler" }
+                
+                if (channels.isNotEmpty()) {
+                    item {
+                        Text("Boundary Channels", style = MaterialTheme.typography.subtitle1, color = Color.LightGray)
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    items(channels) { comp ->
+                        ComponentCard(comp, selectedTarget)
+                    }
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                            Text("⬇ Dataflow ⬇", color = Color.Gray, style = MaterialTheme.typography.caption)
+                        }
+                    }
+                }
+                
+                if (handlers.isNotEmpty()) {
+                    item {
+                        Text("Execution FSMs (Handlers)", style = MaterialTheme.typography.subtitle1, color = Color.LightGray)
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    items(handlers) { comp ->
+                        ComponentCard(comp, selectedTarget)
+                    }
                 }
             }
         }
@@ -148,9 +172,9 @@ fun ComponentCard(comp: TopologyComponent, selectedTarget: String) {
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 val opsString = when(selectedTarget) {
-                    "JVM" -> comp.jvmAssemblyHtml
-                    "Native (Linux/x86_64)" -> comp.nativeAssemblyHtml
-                    else -> comp.appleArmAssemblyHtml
+                    "JVM (Bytecode)" -> comp.jvmAssemblyHtml
+                    "Native (x86_64)" -> comp.nativeAssemblyHtml
+                    else -> ""
                 }
                 
                 if (opsString.isNotEmpty()) {

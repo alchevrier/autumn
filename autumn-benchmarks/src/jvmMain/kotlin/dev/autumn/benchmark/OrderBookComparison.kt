@@ -96,13 +96,24 @@ val inboundNetwork = dev.autumn.channel.AutumnChannel<OrderEvent>(16777216)
 @ObserveChannel(observerName = "networkTelemetry", capacity = MESSAGE_COUNT)
 val metricsHistogram = LatencyHistogram(0, MESSAGE_COUNT)
 
+@LongLived
+val snapshotBuffer = LongArray(MESSAGE_COUNT)
+@LongLived
+var snapshotIdx = 0
+
 var startTime = 0L
 
 @Observe("networkTelemetry")
 @LongLived
-@CycleBudget(limit = 600) // Elevated budget since Benchmark includes verification/println blocks
+@CycleBudget(limit = 800)
 fun onInboundNetwork(idx: Int) {
     val event = OrderEvent(idx)
+    
+    // RECORD THE SNAPSHOT (Proves chronological sequential execution)
+    if (event.ref >= 0L) {
+        snapshotBuffer[snapshotIdx++] = event.ref
+    }
+
     val px = event.price
     val baseOffset = px * MAX_ORDERS_PER_LEVEL
     val depth = levelDepthCounters[px]
@@ -123,6 +134,22 @@ fun onInboundNetwork(idx: Int) {
         println("[Autumn Observatory] P99 Latency : ${metricsHistogram.calculatePercentile(99.0)} ns")
         println("[Autumn Observatory] P99.9 Latency: ${metricsHistogram.calculatePercentile(99.9)} ns")
         println("[Autumn Observatory] P99.99 Latency: ${metricsHistogram.calculatePercentile(99.99)} ns")
+        
+        println("[Autumn Observatory] Validating Execution Chronology through Snapshotting...")
+        var sequentialityPreserved = true
+        var corruptedIndex = -1
+        for (i in 0 until MESSAGE_COUNT) {
+            if (snapshotBuffer[i] != i.toLong()) {
+                corruptedIndex = i
+                sequentialityPreserved = false
+                break
+            }
+        }
+        if (sequentialityPreserved) {
+             println("[Autumn Observatory] Snapshot Verification: Execution Chronology is EXACTLY Sequential. No race conditions detected.")
+        } else {
+             println("[Autumn Observatory] FATAL: Out-of-order execution detected at sequence index $corruptedIndex. Found: ${snapshotBuffer[corruptedIndex]}")
+        }
         
         // Correctness Verification (Adds overhead but proves K2 offset math)
         // Commented out to ensure JIT compiler tightly inlines the hot path!

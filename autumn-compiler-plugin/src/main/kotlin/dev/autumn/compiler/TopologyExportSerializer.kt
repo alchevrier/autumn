@@ -13,7 +13,11 @@ object TopologyExportSerializer {
         val capacity: Int = 0,
         val cycles: Int = 0,
         val portPressure: String = "",
-        val target: String = "" 
+        val target: String = "",
+        // NEW: Multi-Target Profiling Drill-Down blocks (Mocked JSON representation for IDE parser)
+        val jvmAssemblyHtml: String = "",
+        val nativeAssemblyHtml: String = "",
+        val appleArmAssemblyHtml: String = ""
     )
 
     val components = mutableListOf<Component>()
@@ -34,7 +38,10 @@ object TopologyExportSerializer {
                 sb.append("    \"capacity\": ${comp.capacity},\n")
                 sb.append("    \"cycles\": ${comp.cycles},\n")
                 sb.append("    \"portPressure\": \"${comp.portPressure}\",\n")
-                sb.append("    \"target\": \"${comp.target}\"\n")
+                sb.append("    \"target\": \"${comp.target}\",\n")
+                sb.append("    \"jvmAssemblyHtml\": \"${comp.jvmAssemblyHtml}\",\n")
+                sb.append("    \"nativeAssemblyHtml\": \"${comp.nativeAssemblyHtml}\",\n")
+                sb.append("    \"appleArmAssemblyHtml\": \"${comp.appleArmAssemblyHtml}\"\n")
                 sb.append("  }")
                 if (index < components.size - 1) sb.append(",")
                 sb.append("\n")

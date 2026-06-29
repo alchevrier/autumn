@@ -37,7 +37,6 @@ data class TopologyComponent(
     val sourceLine: Int = 0,
     val jvmAssemblyHtml: String = "",
     val nativeAssemblyHtml: String = "",
-    val appleArmAssemblyHtml: String = "",
     val wasmAssemblyHtml: String = ""
 )
 
@@ -98,7 +97,17 @@ fun TopologyDashboard(project: Project) {
         
         Spacer(modifier = Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("JVM (Bytecode)", "Native (x86_64)", "Web (Wasm)").forEach { tgt ->
+            val availableTargets = listOf(
+                "JVM (Bytecode)" to { c: TopologyComponent -> c.jvmAssemblyHtml.isNotBlank() },
+                "Native (x86_64)" to { c: TopologyComponent -> c.nativeAssemblyHtml.isNotBlank() },
+                "Web (Wasm)" to { c: TopologyComponent -> c.wasmAssemblyHtml.isNotBlank() }
+            ).filter { (_, predicate) -> components.any(predicate) }.map { it.first }.ifEmpty { listOf("JVM (Bytecode)") }
+            
+            if (selectedTarget !in availableTargets && availableTargets.isNotEmpty()) {
+                selectedTarget = availableTargets.first()
+            }
+            
+            availableTargets.forEach { tgt ->
                 Button(
                     onClick = { selectedTarget = tgt },
                     colors = ButtonDefaults.buttonColors(

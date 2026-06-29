@@ -117,6 +117,19 @@ class TopologySynthesisTransformer(
         val st = super.visitFunctionNew(declaration)
         if (declaration.hasAnnotation(INJECT_TOPOLOGY_FQ) && discoveredChannels.isNotEmpty()) {
             
+            // --- INJECT JSON EXPORT FOR TOPOLOGY ROOT ---
+            val fileEntry = declaration.file.fileEntry
+            TopologyExportSerializer.components.add(
+                TopologyExportSerializer.Component(
+                    type = "TopologyRoot",
+                    name = declaration.name.asString(),
+                    target = discoveredChannels.joinToString(",") { it.name },
+                    sourceFile = fileEntry.name,
+                    sourceLine = fileEntry.getLineNumber(declaration.startOffset)
+                )
+            )
+            // --------------------------------------------
+
             val currentBody = declaration.body as? IrBlockBodyImpl ?: return st
             val builder = DeclarationIrBuilder(pluginContext, declaration.symbol)
             

@@ -19,7 +19,8 @@ object TopologyExportSerializer {
         // NEW: Multi-Target Profiling Drill-Down blocks (Mocked JSON representation for IDE parser)
         val jvmAssemblyHtml: String = "",
         val nativeAssemblyHtml: String = "",
-        val appleArmAssemblyHtml: String = ""
+        val appleArmAssemblyHtml: String = "",
+        val wasmAssemblyHtml: String = ""
     )
 
     val components = mutableListOf<Component>()
@@ -45,7 +46,8 @@ object TopologyExportSerializer {
                 sb.append("    \"sourceLine\": ${comp.sourceLine},\n")
                 sb.append("    \"jvmAssemblyHtml\": \"${comp.jvmAssemblyHtml}\",\n")
                 sb.append("    \"nativeAssemblyHtml\": \"${comp.nativeAssemblyHtml}\",\n")
-                sb.append("    \"appleArmAssemblyHtml\": \"${comp.appleArmAssemblyHtml}\"\n")
+                sb.append("    \"appleArmAssemblyHtml\": \"${comp.appleArmAssemblyHtml}\",\n")
+                sb.append("    \"wasmAssemblyHtml\": \"${comp.wasmAssemblyHtml}\"\n")
                 sb.append("  }")
                 if (index < components.size - 1) sb.append(",")
                 sb.append("\n")

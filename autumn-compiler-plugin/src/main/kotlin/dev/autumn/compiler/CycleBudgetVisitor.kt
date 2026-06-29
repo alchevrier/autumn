@@ -36,6 +36,7 @@ class CycleBudgetVisitor(
             val jvmBuilder = StringBuilder()
             val nativeBuilder = StringBuilder()
             val armBuilder = StringBuilder()
+            val wasmBuilder = StringBuilder()
 
             var estimatedCycles = 0
             
@@ -78,11 +79,20 @@ class CycleBudgetVisitor(
                         is IrReturn -> "ret"
                         else -> "nop"
                     }
+                    val wasmOp = when(element) {
+                        is IrCall -> "call"
+                        is IrGetValue -> "local.get"
+                        is IrSetField -> "i32.store"
+                        is IrBranch -> "br_if"
+                        is IrReturn -> "return"
+                        else -> "nop"
+                    }
                     
                     if (element is IrCall || element is IrSetField || element is IrBranch) {
                         jvmBuilder.append("${nodeName}|${jvmOpcode}|${elementsCycles};")
                         nativeBuilder.append("${nodeName}|${nativeOp}|${elementsCycles};")
                         armBuilder.append("${nodeName}|${armOp}|${elementsCycles};")
+                        wasmBuilder.append("${nodeName}|${wasmOp}|${elementsCycles};")
                     }
 
                     element.acceptChildren(this, null)

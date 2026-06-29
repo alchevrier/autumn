@@ -37,7 +37,8 @@ data class TopologyComponent(
     val sourceLine: Int = 0,
     val jvmAssemblyHtml: String = "",
     val nativeAssemblyHtml: String = "",
-    val appleArmAssemblyHtml: String = ""
+    val appleArmAssemblyHtml: String = "",
+    val wasmAssemblyHtml: String = ""
 )
 
 class AutumnPerformanceCenterToolWindow : ToolWindowFactory {
@@ -97,7 +98,7 @@ fun TopologyDashboard(project: Project) {
         
         Spacer(modifier = Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("JVM (Bytecode)", "Native (x86_64)").forEach { tgt ->
+            listOf("JVM (Bytecode)", "Native (x86_64)", "Web (Wasm)").forEach { tgt ->
                 Button(
                     onClick = { selectedTarget = tgt },
                     colors = ButtonDefaults.buttonColors(
@@ -245,6 +246,7 @@ fun ComponentCard(comp: TopologyComponent, selectedTarget: String, project: Proj
                 val opsString = when(selectedTarget) {
                     "JVM (Bytecode)" -> comp.jvmAssemblyHtml
                     "Native (x86_64)" -> comp.nativeAssemblyHtml
+                    "Web (Wasm)" -> comp.wasmAssemblyHtml
                     else -> ""
                 }
                 

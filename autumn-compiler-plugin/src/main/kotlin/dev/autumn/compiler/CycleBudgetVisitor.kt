@@ -10,6 +10,7 @@ import org.jetbrains.kotlin.ir.util.getAnnotation
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.util.file
 
 class CycleBudgetVisitor(
     private val pluginContext: IrPluginContext,
@@ -51,7 +52,7 @@ class CycleBudgetVisitor(
                     }
                     estimatedCycles += elementsCycles
                     
-                    val nodeName = element::class.java.simpleName
+                    val nodeName = if (element is IrCall) "call ${element.symbol.owner.name.asString()}" else element::class.java.simpleName.replace("Impl", "")
                     val jvmOpcode = when(element) {
                         is IrCall -> "INVOKEVIRT/STATIC"
                         is IrGetValue -> "ALOAD/ILOAD"
@@ -95,6 +96,9 @@ class CycleBudgetVisitor(
             val state = if (estimatedCycles > budgetLimit) "VIOLATION" else "VERIFIED"
 
             // --- INJECT JSON RECORD ---
+            val fileEntry = declaration.file.fileEntry
+            val srcFile = fileEntry.name
+            val srcLine = fileEntry.getLineNumber(declaration.startOffset)
             var targetChannel = ""
             if (declaration.hasAnnotation(FqName("dev.autumn.annotations.Observe"))) {
                 val obs = declaration.getAnnotation(FqName("dev.autumn.annotations.Observe"))
@@ -108,6 +112,8 @@ class CycleBudgetVisitor(
                     cycles = estimatedCycles,
                     portPressure = if (estimatedCycles > budgetLimit) "HIGH" else "NORMAL",
                     target = targetChannel,
+                    sourceFile = srcFile,
+                    sourceLine = srcLine,
                     jvmAssemblyHtml = jvmBuilder.toString().replace("\"", "'"),
                     nativeAssemblyHtml = nativeBuilder.toString().replace("\"", "'"),
                     appleArmAssemblyHtml = armBuilder.toString().replace("\"", "'")

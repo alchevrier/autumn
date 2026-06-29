@@ -20,6 +20,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.Serializable
 import java.io.File
+import com.intellij.openapi.fileEditor.OpenFileDescriptor
+import com.intellij.openapi.vfs.LocalFileSystem
 import kotlin.concurrent.timer
 
 @Serializable
@@ -31,6 +33,8 @@ data class TopologyComponent(
     val cycles: Int = 0,
     val portPressure: String = "",
     val target: String = "",
+    val sourceFile: String = "",
+    val sourceLine: Int = 0,
     val jvmAssemblyHtml: String = "",
     val nativeAssemblyHtml: String = "",
     val appleArmAssemblyHtml: String = ""
@@ -119,7 +123,7 @@ fun TopologyDashboard(project: Project) {
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                     items(channels) { comp ->
-                        ComponentCard(comp, selectedTarget)
+                        ComponentCard(comp, selectedTarget, project)
                     }
                     item {
                         Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
@@ -134,7 +138,7 @@ fun TopologyDashboard(project: Project) {
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                     items(handlers) { comp ->
-                        ComponentCard(comp, selectedTarget)
+                        ComponentCard(comp, selectedTarget, project)
                     }
                 }
             }
@@ -143,7 +147,7 @@ fun TopologyDashboard(project: Project) {
 }
 
 @Composable
-fun ComponentCard(comp: TopologyComponent, selectedTarget: String) {
+fun ComponentCard(comp: TopologyComponent, selectedTarget: String, project: Project) {
     var expanded by remember { mutableStateOf(false) }
 
     Card(
@@ -154,7 +158,18 @@ fun ComponentCard(comp: TopologyComponent, selectedTarget: String) {
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             val icon = if (comp.type == "Channel") "📦" else "⚡"
-            Text("$icon ${comp.type}: ${comp.name}", style = MaterialTheme.typography.subtitle1, color = Color.Cyan)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("$icon ${comp.type}: ${comp.name}", style = MaterialTheme.typography.subtitle1, color = Color.Cyan)
+                
+                if (comp.sourceFile.isNotEmpty()) {
+                    Text("🔗 Jump to Source", style = MaterialTheme.typography.caption, color = Color(0xFF6495ED), modifier = Modifier.clickable {
+                        val vFile = LocalFileSystem.getInstance().findFileByIoFile(File(comp.sourceFile))
+                        if (vFile != null) {
+                            OpenFileDescriptor(project, vFile, comp.sourceLine, 0).navigate(true)
+                        }
+                    })
+                }
+            }
             
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 if (comp.cycles > 0) Text("Cycles: ${comp.cycles}", style = MaterialTheme.typography.body2)

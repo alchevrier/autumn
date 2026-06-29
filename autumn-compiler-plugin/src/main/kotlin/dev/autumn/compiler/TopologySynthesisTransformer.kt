@@ -75,6 +75,10 @@ class TopologySynthesisTransformer(
 
             val sharded = 1
             
+            val fileEntry = declaration.file.fileEntry
+            val srcFile = fileEntry.name
+            val srcLine = fileEntry.getLineNumber(declaration.startOffset)
+            
             discoveredChannels.add(ChannelTopologyInfo(
                 name = declaration.name.asString(),
                 weight = weight,
@@ -91,7 +95,9 @@ class TopologySynthesisTransformer(
                     name = declaration.name.asString(),
                     channelType = typeString,
                     capacity = capacity,
-                    target = ""
+                    target = "",
+                    sourceFile = srcFile,
+                    sourceLine = srcLine
                 )
             )
             // ---------------------------------------

@@ -14,6 +14,8 @@ object TopologyExportSerializer {
         val cycles: Int = 0,
         val portPressure: String = "",
         val target: String = "",
+        val sourceFile: String = "",
+        val sourceLine: Int = 0,
         // NEW: Multi-Target Profiling Drill-Down blocks (Mocked JSON representation for IDE parser)
         val jvmAssemblyHtml: String = "",
         val nativeAssemblyHtml: String = "",
@@ -39,6 +41,8 @@ object TopologyExportSerializer {
                 sb.append("    \"cycles\": ${comp.cycles},\n")
                 sb.append("    \"portPressure\": \"${comp.portPressure}\",\n")
                 sb.append("    \"target\": \"${comp.target}\",\n")
+                sb.append("    \"sourceFile\": \"${comp.sourceFile}\",\n")
+                sb.append("    \"sourceLine\": ${comp.sourceLine},\n")
                 sb.append("    \"jvmAssemblyHtml\": \"${comp.jvmAssemblyHtml}\",\n")
                 sb.append("    \"nativeAssemblyHtml\": \"${comp.nativeAssemblyHtml}\",\n")
                 sb.append("    \"appleArmAssemblyHtml\": \"${comp.appleArmAssemblyHtml}\"\n")

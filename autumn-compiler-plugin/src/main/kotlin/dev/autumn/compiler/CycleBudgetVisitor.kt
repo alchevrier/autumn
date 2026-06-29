@@ -108,9 +108,9 @@ class CycleBudgetVisitor(
                     cycles = estimatedCycles,
                     portPressure = if (estimatedCycles > budgetLimit) "HIGH" else "NORMAL",
                     target = targetChannel,
-                    jvmAssemblyHtml = jvmBuilder.toString().replace(""", "'"),
-                    nativeAssemblyHtml = nativeBuilder.toString().replace(""", "'"),
-                    appleArmAssemblyHtml = armBuilder.toString().replace(""", "'")
+                    jvmAssemblyHtml = jvmBuilder.toString().replace("\"", "'"),
+                    nativeAssemblyHtml = nativeBuilder.toString().replace("\"", "'"),
+                    appleArmAssemblyHtml = armBuilder.toString().replace("\"", "'")
                 )
             )
             // --------------------------

@@ -10,6 +10,7 @@ class AutumnIrGenerationExtension(
 ) : IrGenerationExtension {
 
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
+        TopologyExportSerializer.clear()
         messageCollector.report(org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.WARNING, "=== IR GENERATION ENTRY: ${moduleFragment.name} ===")
 
         // 1. Process literal injections for circuit breaker budgets

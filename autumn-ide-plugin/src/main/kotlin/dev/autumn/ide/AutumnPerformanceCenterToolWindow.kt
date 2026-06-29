@@ -114,9 +114,14 @@ fun TopologyDashboard(project: Project) {
         if (components.isEmpty()) {
             Text("No Topology Metrics Discovered.", color = Color.Gray)
         } else {
-            val allChannels = components.filter { it.type == "Channel" }
             val handlers = components.filter { it.type == "Handler" }
-            val roots = components.filter { it.type == "TopologyRoot" }
+            val allChannels = components.filter { c -> 
+                c.type == "Channel" && handlers.any { h -> h.target == c.name || h.name.lowercase().contains(c.name.lowercase()) }
+            }
+            val roots = components.filter { it.type == "TopologyRoot" }.filter { r ->
+                val boundNames = r.target.split(",")
+                allChannels.any { boundNames.contains(it.name) }
+            }
             
             var selectedTabIndex by remember { mutableStateOf(0) }
             val tabs = if (roots.isNotEmpty()) roots else allChannels
@@ -220,7 +225,18 @@ fun ComponentCard(comp: TopologyComponent, selectedTarget: String, project: Proj
                 
                 if (comp.sourceFile.isNotEmpty()) {
                     Text("🔗 Jump to Source", style = MaterialTheme.typography.caption, color = Color(0xFF6495ED), modifier = Modifier.clickable {
-                        val vFile = LocalFileSystem.getInstance().findFileByIoFile(File(comp.sourceFile))
+                        var targetFile = comp.sourceFile
+                        if (selectedTarget.contains("Native")) {
+                            targetFile = targetFile.replace("jvmMain", "linuxX64Main").replace("jsMain", "linuxX64Main")
+                        } else if (selectedTarget.contains("Web")) {
+                            targetFile = targetFile.replace("jvmMain", "jsMain").replace("linuxX64Main", "jsMain")
+                        } else {
+                            targetFile = targetFile.replace("linuxX64Main", "jvmMain").replace("jsMain", "jvmMain")
+                        }
+                        
+                        var vFile = LocalFileSystem.getInstance().findFileByIoFile(File(targetFile))
+                        if (vFile == null) vFile = LocalFileSystem.getInstance().findFileByIoFile(File(comp.sourceFile)) // fallback
+                        
                         if (vFile != null) {
                             OpenFileDescriptor(project, vFile, comp.sourceLine, 0).navigate(true)
                         }

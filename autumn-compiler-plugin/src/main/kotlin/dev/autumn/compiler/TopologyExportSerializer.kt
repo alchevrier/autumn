@@ -25,6 +25,8 @@ object TopologyExportSerializer {
 
     val components = mutableListOf<Component>()
 
+    fun clear() { components.clear() }
+
     fun dumpToJson(outputDir: String, messageCollector: MessageCollector? = null) {
         try {
             val dir = File(outputDir)

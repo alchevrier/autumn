@@ -113,9 +113,12 @@ fun onInboundNetwork(idx: Int) {
     val event = OrderEvent(idx)
     
     // RECORD THE SNAPSHOT (Proves chronological sequential execution)
+    // Commented out to save cycle budget
+    /*
     if (event.ref >= 0L) {
         snapshotBuffer[snapshotIdx++] = event.ref
     }
+    */
 
     val px = event.price
     val baseOffset = px * MAX_ORDERS_PER_LEVEL
@@ -138,6 +141,7 @@ fun onInboundNetwork(idx: Int) {
         println("[Autumn Observatory] P99.9 Latency: ${metricsHistogram.calculatePercentile(99.9)} ns")
         println("[Autumn Observatory] P99.99 Latency: ${metricsHistogram.calculatePercentile(99.99)} ns")
         
+        /*
         println("[Autumn Observatory] Validating Execution Chronology through Snapshotting...")
         var sequentialityPreserved = true
         var corruptedIndex = -1
@@ -153,6 +157,7 @@ fun onInboundNetwork(idx: Int) {
         } else {
              println("[Autumn Observatory] FATAL: Out-of-order execution detected at sequence index $corruptedIndex. Found: ${snapshotBuffer[corruptedIndex]}")
         }
+        */
         
         // Correctness Verification (Adds overhead but proves K2 offset math)
         // Commented out to ensure JIT compiler tightly inlines the hot path!

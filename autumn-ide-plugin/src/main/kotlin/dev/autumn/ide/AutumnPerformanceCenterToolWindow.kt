@@ -5,10 +5,17 @@ import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import androidx.compose.ui.awt.ComposePanel
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontFamily
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.Serializable
@@ -19,10 +26,14 @@ import kotlin.concurrent.timer
 data class TopologyComponent(
     val type: String,
     val name: String,
-    val capacity: Int,
-    val cycles: Int,
-    val portPressure: String,
-    val target: String
+    val channelType: String = "",
+    val capacity: Int = 0,
+    val cycles: Int = 0,
+    val portPressure: String = "",
+    val target: String = "",
+    val jvmAssemblyHtml: String = "",
+    val nativeAssemblyHtml: String = "",
+    val appleArmAssemblyHtml: String = ""
 )
 
 class AutumnPerformanceCenterToolWindow : ToolWindowFactory {
@@ -46,8 +57,8 @@ class AutumnPerformanceCenterToolWindow : ToolWindowFactory {
 fun TopologyDashboard(project: Project) {
     var components by remember { mutableStateOf(emptyList<TopologyComponent>()) }
     var lastUpdated by remember { mutableStateOf("") }
+    var selectedTarget by remember { mutableStateOf("JVM") }
     
-    // Simple polling watcher pointing into the active project directory
     DisposableEffect(project) {
         val topologyFile = File(project.basePath, "build/reports/autumn/topology.json")
         val timer = timer(period = 2000L) {
@@ -61,33 +72,94 @@ fun TopologyDashboard(project: Project) {
                     lastUpdated = "Error parsing json: ${e.message}"
                 }
             } else {
-                lastUpdated = "File not found: ${topologyFile.absolutePath}"
+                lastUpdated = "Waiting for compilation (topology.json)..."
             }
         }
         onDispose { timer.cancel() }
     }
     
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text("Autumn Topology Metrics", style = MaterialTheme.typography.h6)
+    Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
+        Text("Autumn Performance Center", style = MaterialTheme.typography.h6)
         Text("Last Synced: $lastUpdated", style = MaterialTheme.typography.caption)
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("JVM", "Native (Linux/x86_64)", "Native (Apple/ARM64)").forEach { tgt ->
+                Button(
+                    onClick = { selectedTarget = tgt },
+                    colors = ButtonDefaults.buttonColors(
+                        backgroundColor = if (selectedTarget == tgt) MaterialTheme.colors.primary else MaterialTheme.colors.surface
+                    )
+                ) {
+                    Text(tgt)
+                }
+            }
+        }
         Spacer(modifier = Modifier.height(16.dp))
         
         if (components.isEmpty()) {
-            Text("No Topology Metrics Discovered. Waiting for K2 Compiler Output...")
+            Text("No Topology Metrics Discovered.", color = Color.Gray)
         } else {
-            components.forEach { comp ->
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    backgroundColor = if (comp.portPressure == "HIGH") MaterialTheme.colors.error else MaterialTheme.colors.surface,
-                    elevation = 2.dp
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text("🧩 ${comp.type}: ${comp.name}", style = MaterialTheme.typography.subtitle1)
-                        Text("⚡ Cycles: ${comp.cycles}", style = MaterialTheme.typography.body2)
-                        if (comp.portPressure.isNotEmpty()) Text("⚠️ Pressure: ${comp.portPressure}", style = MaterialTheme.typography.body2)
-                        if (comp.target.isNotEmpty()) Text("🎯 Routes To: ${comp.target}", style = MaterialTheme.typography.body2)
-                        if (comp.capacity > 0) Text("📦 Ring Size: ${comp.capacity}", style = MaterialTheme.typography.body2)
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                items(components) { comp ->
+                    ComponentCard(comp, selectedTarget)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ComponentCard(comp: TopologyComponent, selectedTarget: String) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { expanded = !expanded },
+        backgroundColor = if (comp.portPressure == "HIGH") MaterialTheme.colors.error.copy(alpha=0.6f) else MaterialTheme.colors.surface,
+        elevation = 2.dp,
+        border = BorderStroke(1.dp, Color.DarkGray)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            val icon = if (comp.type == "Channel") "📦" else "⚡"
+            Text("$icon ${comp.type}: ${comp.name}", style = MaterialTheme.typography.subtitle1, color = Color.Cyan)
+            
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                if (comp.cycles > 0) Text("Cycles: ${comp.cycles}", style = MaterialTheme.typography.body2)
+                if (comp.portPressure.isNotEmpty()) Text("Pressure: ${comp.portPressure}", style = MaterialTheme.typography.body2)
+                if (comp.capacity > 0) Text("Capacity: ${comp.capacity}", style = MaterialTheme.typography.body2)
+            }
+            if (comp.target.isNotEmpty()) Text("Routes To: ${comp.target}", style = MaterialTheme.typography.body2, color = Color.Yellow)
+            
+            if (expanded && comp.type == "Handler") {
+                Spacer(modifier = Modifier.height(8.dp))
+                Divider()
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text("Micro-Architectural Drill-Down", color = MaterialTheme.colors.primary, style = MaterialTheme.typography.subtitle2)
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                val opsString = when(selectedTarget) {
+                    "JVM" -> comp.jvmAssemblyHtml
+                    "Native (Linux/x86_64)" -> comp.nativeAssemblyHtml
+                    else -> comp.appleArmAssemblyHtml
+                }
+                
+                if (opsString.isNotEmpty()) {
+                    Column(modifier = Modifier.background(Color.Black).padding(8.dp).fillMaxWidth()) {
+                        val lines = opsString.split(";").filter { it.isNotBlank() }
+                        lines.forEach { line ->
+                            val parts = line.split("|")
+                            if (parts.size >= 3) {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text(parts[0], fontFamily = FontFamily.Monospace, color = Color(0xFFA9A9A9), modifier = Modifier.weight(1f))
+                                    Text(parts[1], fontFamily = FontFamily.Monospace, color = Color(0xFF98FB98), modifier = Modifier.weight(1f))
+                                    Text("${parts[2]} cyc", fontFamily = FontFamily.Monospace, color = Color(0xFFFF6347))
+                                }
+                            }
+                        }
                     }
+                } else {
+                    Text("No deep profiling data available.", color = Color.Gray)
                 }
             }
         }

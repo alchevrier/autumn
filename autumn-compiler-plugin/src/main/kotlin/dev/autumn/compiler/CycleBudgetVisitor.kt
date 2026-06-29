@@ -30,11 +30,17 @@ class CycleBudgetVisitor(
             val limitArg = annot?.getValueArgument(0) as? IrConst
             val budgetLimit = (limitArg?.value as? Int) ?: 200
 
+            
+            
+            val jvmBuilder = StringBuilder()
+            val nativeBuilder = StringBuilder()
+            val armBuilder = StringBuilder()
+
             var estimatedCycles = 0
             
             declaration.body?.accept(object : IrElementVisitorVoid {
                 override fun visitElement(element: IrElement) {
-                    estimatedCycles += when (element) {
+                    val elementsCycles = when (element) {
                         is IrCall -> 10       
                         is IrGetValue -> 1    
                         is IrSetField -> 2    
@@ -43,9 +49,46 @@ class CycleBudgetVisitor(
                         is IrTypeOperatorCall -> 1 
                         else -> 1             
                     }
+                    estimatedCycles += elementsCycles
+                    
+                    val nodeName = element::class.java.simpleName
+                    val jvmOpcode = when(element) {
+                        is IrCall -> "INVOKEVIRT/STATIC"
+                        is IrGetValue -> "ALOAD/ILOAD"
+                        is IrSetField -> "PUTFIELD"
+                        is IrBranch -> "IFEQ/GOTO"
+                        is IrReturn -> "RETURN"
+                        is IrTypeOperatorCall -> "CHECKCAST"
+                        else -> "NOP"
+                    }
+                    val nativeOp = when(element) {
+                        is IrCall -> "call"
+                        is IrGetValue -> "mov"
+                        is IrSetField -> "mov"
+                        is IrBranch -> "cmp; jmp"
+                        is IrReturn -> "ret"
+                        else -> "nop"
+                    }
+                    val armOp = when(element) {
+                        is IrCall -> "bl"
+                        is IrGetValue -> "ldr"
+                        is IrSetField -> "str"
+                        is IrBranch -> "cmp; b.eq"
+                        is IrReturn -> "ret"
+                        else -> "nop"
+                    }
+                    
+                    if (element is IrCall || element is IrSetField || element is IrBranch) {
+                        jvmBuilder.append("${nodeName}|${jvmOpcode}|${elementsCycles};")
+                        nativeBuilder.append("${nodeName}|${nativeOp}|${elementsCycles};")
+                        armBuilder.append("${nodeName}|${armOp}|${elementsCycles};")
+                    }
+
                     element.acceptChildren(this, null)
                 }
             }, null)
+
+
 
 
             val severity = if (estimatedCycles > budgetLimit) CompilerMessageSeverity.ERROR else CompilerMessageSeverity.INFO
@@ -64,7 +107,10 @@ class CycleBudgetVisitor(
                     name = declaration.name.asString(),
                     cycles = estimatedCycles,
                     portPressure = if (estimatedCycles > budgetLimit) "HIGH" else "NORMAL",
-                    target = targetChannel
+                    target = targetChannel,
+                    jvmAssemblyHtml = jvmBuilder.toString().replace(""", "'"),
+                    nativeAssemblyHtml = nativeBuilder.toString().replace(""", "'"),
+                    appleArmAssemblyHtml = armBuilder.toString().replace(""", "'")
                 )
             )
             // --------------------------

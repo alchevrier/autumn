@@ -50,7 +50,7 @@ object TopologyExportSerializer {
             
             file.writeText(sb.toString())
             messageCollector?.report(CompilerMessageSeverity.WARNING, "=== AUTUMN TOPOLOGY JSON EXPORTED TO ${file.absolutePath} with ${components.size} components ===")
-        } catch(e: Exception) {
+        } catch(e: Throwable) {
             messageCollector?.report(CompilerMessageSeverity.WARNING, "Failed to dump topology telemetry (safely ignored): ${e.message}")
         }
     }

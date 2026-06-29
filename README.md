@@ -187,6 +187,7 @@ Architectural decisions live in [`docs/adr/`](docs/adr) and capture the initial 
 - ADR-0024 — IDE Performance Center and Topology Visualization
 - ADR-0025 — Kotlin-to-RTL (SystemVerilog) High-Level Synthesis
 - ADR-0026 — Automated Real-Time Audit Certification
+- ADR-0027 — Multi-Target Assembly Profiling and IDE Drill-Down
 
 ## Tooling Roadmap
 

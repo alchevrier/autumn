@@ -113,30 +113,53 @@ fun TopologyDashboard(project: Project) {
         if (components.isEmpty()) {
             Text("No Topology Metrics Discovered.", color = Color.Gray)
         } else {
-            LazyColumn(modifier = Modifier.weight(1f)) {
-                val channels = components.filter { it.type == "Channel" }
-                val handlers = components.filter { it.type == "Handler" }
+            val channels = components.filter { it.type == "Channel" }
+            val handlers = components.filter { it.type == "Handler" }
+            
+            var selectedTabIndex by remember { mutableStateOf(0) }
+            if (selectedTabIndex >= channels.size && channels.isNotEmpty()) selectedTabIndex = 0
+            
+            if (channels.isNotEmpty()) {
+                ScrollableTabRow(
+                    selectedTabIndex = selectedTabIndex,
+                    backgroundColor = MaterialTheme.colors.surface,
+                    contentColor = MaterialTheme.colors.primary,
+                    edgePadding = 8.dp
+                ) {
+                    channels.forEachIndexed { index, channel ->
+                        Tab(
+                            selected = selectedTabIndex == index,
+                            onClick = { selectedTabIndex = index },
+                            text = { Text("Topology: ${channel.name}", style = MaterialTheme.typography.subtitle2) }
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
                 
-                if (channels.isNotEmpty()) {
-                    item {
-                        Text("Boundary Channels", style = MaterialTheme.typography.subtitle1, color = Color.LightGray)
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                    items(channels) { comp ->
-                        ComponentCard(comp, selectedTarget, project)
-                    }
-                    item {
-                        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                            Text("⬇ Dataflow ⬇", color = Color.Gray, style = MaterialTheme.typography.caption)
+                val currentChannel = channels.getOrNull(selectedTabIndex)
+                if (currentChannel != null) {
+                    LazyColumn(modifier = Modifier.weight(1f)) {
+                        item {
+                            ComponentCard(currentChannel, selectedTarget, project)
+                            
+                            Box(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                Text("⬇ Dataflow ⬇", color = Color.Gray, style = MaterialTheme.typography.caption)
+                            }
+                        }
+                        
+                        val relatedHandlers = handlers.filter { 
+                            it.target == currentChannel.name || 
+                            it.name.lowercase().contains(currentChannel.name.lowercase()) ||
+                            channels.size == 1
+                        }
+                        
+                        items(relatedHandlers) { comp ->
+                            ComponentCard(comp, selectedTarget, project)
                         }
                     }
                 }
-                
-                if (handlers.isNotEmpty()) {
-                    item {
-                        Text("Execution FSMs (Handlers)", style = MaterialTheme.typography.subtitle1, color = Color.LightGray)
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
+            } else {
+                LazyColumn(modifier = Modifier.weight(1f)) {
                     items(handlers) { comp ->
                         ComponentCard(comp, selectedTarget, project)
                     }

@@ -60,13 +60,22 @@ fun TopologyDashboard(project: Project) {
     var selectedTarget by remember { mutableStateOf("JVM") }
     
     DisposableEffect(project) {
-        val topologyFile = File(project.basePath, "build/reports/autumn/topology.json")
         val timer = timer(period = 2000L) {
-            if (topologyFile.exists()) {
+            val rootDir = File(project.basePath ?: "")
+            // Find all topology.json files in submodules
+            val allTopologyFiles = rootDir.walkTopDown()
+                .filter { it.name == "topology.json" && it.absolutePath.contains("build/reports/autumn") }
+                .toList()
+
+            if (allTopologyFiles.isNotEmpty()) {
                 try {
-                    val rawJson = topologyFile.readText()
-                    val decoded = Json { ignoreUnknownKeys = true }.decodeFromString<List<TopologyComponent>>(rawJson)
-                    components = decoded
+                    val allComponents = mutableListOf<TopologyComponent>()
+                    for (file in allTopologyFiles) {
+                        val rawJson = file.readText()
+                        val decoded = Json { ignoreUnknownKeys = true }.decodeFromString<List<TopologyComponent>>(rawJson)
+                        allComponents.addAll(decoded)
+                    }
+                    components = allComponents
                     lastUpdated = java.time.LocalTime.now().toString()
                 } catch(e: Exception) {
                     lastUpdated = "Error parsing json: ${e.message}"

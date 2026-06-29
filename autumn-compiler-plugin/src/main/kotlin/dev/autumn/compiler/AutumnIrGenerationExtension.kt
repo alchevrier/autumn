@@ -10,6 +10,8 @@ class AutumnIrGenerationExtension(
 ) : IrGenerationExtension {
 
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
+        messageCollector.report(org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.WARNING, "=== IR GENERATION ENTRY: ${moduleFragment.name} ===")
+
         // 1. Process literal injections for circuit breaker budgets
         val injectionTransformer = BudgetInjectionTransformer(pluginContext, messageCollector)
         moduleFragment.transform(injectionTransformer, null)
@@ -42,9 +44,17 @@ class AutumnIrGenerationExtension(
         val topologyTransformer = TopologySynthesisTransformer(pluginContext, messageCollector)
         moduleFragment.transform(topologyTransformer, null)
         
-        // 6. Export the final Topology and execution bounds to a local JSON artifact for the IDE Plugin to ingest natively!
         
-        TopologyExportSerializer.dumpToJson("build/reports/autumn", messageCollector)
+        // 6. Export the final Topology and execution bounds to a local JSON artifact for the IDE Plugin to ingest natively!
+        val firstFile = moduleFragment.files.firstOrNull()?.fileEntry?.name
+        val safePath = if (firstFile != null && firstFile.contains("/src/")) {
+            firstFile.substringBefore("/src/") + "/build/reports/autumn"
+        } else {
+            "build/reports/autumn"
+        }
+        TopologyExportSerializer.dumpToJson(safePath, messageCollector)
+
+
     }
 }
 

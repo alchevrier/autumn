@@ -113,53 +113,86 @@ fun TopologyDashboard(project: Project) {
         if (components.isEmpty()) {
             Text("No Topology Metrics Discovered.", color = Color.Gray)
         } else {
-            val channels = components.filter { it.type == "Channel" }
+            val allChannels = components.filter { it.type == "Channel" }
             val handlers = components.filter { it.type == "Handler" }
+            val roots = components.filter { it.type == "TopologyRoot" }
             
             var selectedTabIndex by remember { mutableStateOf(0) }
-            if (selectedTabIndex >= channels.size && channels.isNotEmpty()) selectedTabIndex = 0
+            val tabs = if (roots.isNotEmpty()) roots else allChannels
             
-            if (channels.isNotEmpty()) {
+            if (selectedTabIndex >= tabs.size && tabs.isNotEmpty()) selectedTabIndex = 0
+            
+            if (tabs.isNotEmpty()) {
                 ScrollableTabRow(
                     selectedTabIndex = selectedTabIndex,
                     backgroundColor = MaterialTheme.colors.surface,
                     contentColor = MaterialTheme.colors.primary,
                     edgePadding = 8.dp
                 ) {
-                    channels.forEachIndexed { index, channel ->
+                    tabs.forEachIndexed { index, tabNode ->
+                        val icon = if (tabNode.type == "TopologyRoot") "⚙️" else "📦"
                         Tab(
                             selected = selectedTabIndex == index,
                             onClick = { selectedTabIndex = index },
-                            text = { Text("Topology: ${channel.name}", style = MaterialTheme.typography.subtitle2) }
+                            text = { Text("$icon Execute: ${tabNode.name}", style = MaterialTheme.typography.subtitle2) }
                         )
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                val currentChannel = channels.getOrNull(selectedTabIndex)
-                if (currentChannel != null) {
+                val currentTab = tabs.getOrNull(selectedTabIndex)
+                if (currentTab != null) {
+                    val channels = if (currentTab.type == "TopologyRoot") {
+                        val boundNames = currentTab.target.split(",")
+                        allChannels.filter { boundNames.contains(it.name) }
+                    } else {
+                        listOf(currentTab)
+                    }
+                    
                     LazyColumn(modifier = Modifier.weight(1f)) {
-                        item {
-                            ComponentCard(currentChannel, selectedTarget, project)
-                            
-                            Box(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                                Text("⬇ Dataflow ⬇", color = Color.Gray, style = MaterialTheme.typography.caption)
+                        if (currentTab.type == "TopologyRoot") {
+                            item {
+                                ComponentCard(currentTab, selectedTarget, project)
+                                Spacer(modifier = Modifier.height(16.dp))
                             }
                         }
                         
-                        val relatedHandlers = handlers.filter { 
-                            it.target == currentChannel.name || 
-                            it.name.lowercase().contains(currentChannel.name.lowercase()) ||
-                            channels.size == 1
+                        if (channels.isNotEmpty()) {
+                            item {
+                                Text("Data Boundaries", style = MaterialTheme.typography.subtitle1, color = Color.LightGray)
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+                            items(channels) { comp ->
+                                ComponentCard(comp, selectedTarget, project)
+                            }
+                            item {
+                                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                    Text("⬇ Dataflow ⬇", color = Color.Gray, style = MaterialTheme.typography.caption)
+                                }
+                            }
                         }
                         
-                        items(relatedHandlers) { comp ->
-                            ComponentCard(comp, selectedTarget, project)
+                        val relatedHandlers = handlers.filter { h ->
+                            channels.any { c -> h.target == c.name || h.name.lowercase().contains(c.name.lowercase()) } || channels.isEmpty()
+                        }
+                        
+                        if (relatedHandlers.isNotEmpty()) {
+                            item {
+                                Text("Execution FSMs (Handlers)", style = MaterialTheme.typography.subtitle1, color = Color.LightGray)
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+                            items(relatedHandlers) { comp ->
+                                ComponentCard(comp, selectedTarget, project)
+                            }
                         }
                     }
                 }
             } else {
                 LazyColumn(modifier = Modifier.weight(1f)) {
+                    item {
+                        Text("Execution FSMs (Handlers)", style = MaterialTheme.typography.subtitle1, color = Color.LightGray)
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
                     items(handlers) { comp ->
                         ComponentCard(comp, selectedTarget, project)
                     }

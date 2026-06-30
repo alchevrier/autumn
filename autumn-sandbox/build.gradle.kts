@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm")
     application
+    id("dev.autumn.certifier")
 }
 
 application {

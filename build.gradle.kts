@@ -2,6 +2,7 @@ plugins {
     id("org.jetbrains.kotlin.multiplatform") version "2.1.21" apply false
     id("org.jetbrains.kotlinx.kover") version "0.8.3"
     id("com.vanniktech.maven.publish") version "0.30.0" apply false
+    id("dev.autumn.certifier") apply false
 }
 
 allprojects {

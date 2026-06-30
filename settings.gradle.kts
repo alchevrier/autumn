@@ -4,6 +4,7 @@ pluginManagement {
     }
 
     includeBuild("autumn-gradle-plugin")
+    includeBuild("autumn-certifier")
     repositories {
         mavenLocal()
         mavenCentral()

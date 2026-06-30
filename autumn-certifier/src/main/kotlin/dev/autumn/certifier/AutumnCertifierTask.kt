@@ -73,8 +73,8 @@ abstract class AutumnCertifierTask : DefaultTask() {
                     logger.error("   → Run: sudo sysctl -w kernel.perf_event_paranoid=-1")
                     logger.error("   → Then re-run: ./gradlew autumnCertify\n")
                 } else {
-                    // Extremely naive regex to scrape cycles from perf output (e.g. "  234,453,123      cycles")
-                    val cycleMatch = Regex("""([\d,]+)\s+cycles""").find(output)
+                    // Naive regex to scrape cycles from perf output (e.g. "  234,453,123      cycles" or "1,200,415,604      cpu_atom/cycles/")
+                    val cycleMatch = Regex("""([\d,]+)\s+(?:cpu_atom/)?cycles""").find(output)
                     if (cycleMatch != null) {
                         empiricalCycles = cycleMatch.groupValues[1].replace(",", "").toLong()
                         logger.lifecycle("   → Physical Hardware Measured: $empiricalCycles total cycles execution time.")

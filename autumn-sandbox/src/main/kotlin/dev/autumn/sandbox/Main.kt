@@ -2,7 +2,9 @@ package dev.autumn.sandbox
 
 import dev.autumn.memory.AutumnMemoryBank
 import dev.autumn.annotations.LongLived
+import dev.autumn.annotations.InjectTopology
 
+@InjectTopology(wcetAuditable = true)
 @LongLived
 fun main() {
     val node = HighFrequencyTradingNode()

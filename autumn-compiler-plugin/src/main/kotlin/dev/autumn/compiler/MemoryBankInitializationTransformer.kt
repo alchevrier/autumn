@@ -33,13 +33,13 @@ class MemoryBankInitializationTransformer(
             )
 
             val memoryBankClass = pluginContext.referenceClass(org.jetbrains.kotlin.name.ClassId.topLevel(FqName("dev.autumn.memory.AutumnMemoryBank")))
-            val allocateFunc = memoryBankClass?.owner?.declarations?.filterIsInstance<IrFunction>()?.find { it.name.asString() == "allocate" }
+            val allocateFunc = memoryBankClass?.owner?.declarations?.filterIsInstance<IrFunction>()?.find { it.name.asString() == "allocate" && it.valueParameters.size == 1 }
 
             if (allocateFunc != null && memoryBankClass != null) {
                 val builder = DeclarationIrBuilder(pluginContext, declaration.symbol)
                 val allocateCall = builder.irCall(allocateFunc.symbol).apply {
                     dispatchReceiver = builder.irGetObject(memoryBankClass)
-                    putValueArgument(0, builder.irInt(totalAllocatedBytes))
+                    putValueArgument(0, org.jetbrains.kotlin.ir.expressions.impl.IrConstImpl.long(-1, -1, pluginContext.irBuiltIns.longType, totalAllocatedBytes.toLong()))
                 }
 
                 val currentBody = declaration.body as? IrBlockBodyImpl

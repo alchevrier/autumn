@@ -55,9 +55,8 @@ class AutumnIrGenerationExtension(
         // 4. Inject Memory Bank hardware boundary bootstrap automatically into Main
         val totalBytesToAllocate = soaTransformer.totalAllocatedBytes[0]
         if (totalBytesToAllocate > 0) {
-            // Disabled in Benchmarks to allow manual MemoryBank testing sizing until bounds logic is finalized.
-            // val initializationTransformer = MemoryBankInitializationTransformer(pluginContext, messageCollector, totalBytesToAllocate)
-            // moduleFragment.transform(initializationTransformer, null)
+            val initializationTransformer = MemoryBankInitializationTransformer(pluginContext, messageCollector, totalBytesToAllocate)
+            moduleFragment.transform(initializationTransformer, null)
         }
 
 

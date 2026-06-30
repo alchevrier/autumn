@@ -90,9 +90,9 @@ var levelOrderShares = IntArray(TICK_LEVELS * MAX_ORDERS_PER_LEVEL)
 var levelDepthCounters = IntArray(TICK_LEVELS)
 
 @LongLived
-@BoundaryChannel(capacity = 16777216, weight = 100)
+@BoundaryChannel(capacity = 16777216, weight = 100, sharded = 4)
 @Speculative(burstWindow = 400)
-val inboundNetwork = dev.autumn.channel.AutumnChannel<OrderEvent>(16777216)
+val inboundNetwork = dev.autumn.channel.AutumnChannel<OrderEvent>(16777216, sharded = 4)
 
 @LongLived
 @ObserveChannel(observerName = "networkTelemetry", capacity = MESSAGE_COUNT)
@@ -200,29 +200,28 @@ val globalScheduler = dev.autumn.scheduler.AutumnScheduler().apply {
 fun bootstrapAutumnPipeline() {
     println("\n--- Executing JVM Compiler-Rewritten Topology ---")
     // Simulate NIC filling the buffer into the memory bank
-    AutumnMemoryBank.allocate(16777216 * 20)
+    AutumnMemoryBank.allocate(16777216L * 100L)
     startTime = dev.autumn.scheduler.AutumnClock.now()
     
     // Bind the unrolled tick and start the self-regulated clock!
-    globalScheduler.bindStaticTopology {
-        tickAutumnPipeline()
-        true // We return true since the generated function is currently Unit
-    }
-    globalScheduler.start(coreId = -1)
+    // Spawn the dynamically injected 4 background cores exactly ONCE!
+    tickAutumnPipeline()
+    // globalScheduler Master loop not needed; threads run autonomously.
+
     
     // Instead of prefilling, we stream individually into the pipeline 
     // Running straight on main thread blocks POSIX exit.
     println("--- WARMUP PHASE: Stream $WARMUP_COUNT events to trigger C1/C2 JIT ---")
     for (i in 0 until WARMUP_COUNT) {
-        var order = inboundNetwork.next()
+        var order = inboundNetwork.nextPartition(i % 4)
         while (order.index == -1) { 
             platform.posix.sched_yield() // wait for queue space
-            order = inboundNetwork.next()
+            order = inboundNetwork.nextPartition(i % 4)
         }
         order.ref = -1L // Signal it's a warmup event
         order.shares = 100 
         order.price = (i % 500) + 5000 
-        inboundNetwork.commitNext()
+        inboundNetwork.commitNextPartition(i % 4)
     }
     
     println("--- BENCHMARK PHASE: Start Recording $MESSAGE_COUNT True Execution Events ---")
@@ -230,15 +229,15 @@ fun bootstrapAutumnPipeline() {
     startTime = dev.autumn.scheduler.AutumnClock.now()
 
     for (i in 0 until MESSAGE_COUNT) {
-        var order = inboundNetwork.next()
+        var order = inboundNetwork.nextPartition(i % 4)
         while (order.index == -1) { 
             platform.posix.sched_yield() // wait for queue space
-            order = inboundNetwork.next()
+            order = inboundNetwork.nextPartition(i % 4)
         }
         order.ref = i.toLong() 
         order.shares = 100 
         order.price = (i % 500) + 5000 
-        inboundNetwork.commitNext()
+        inboundNetwork.commitNextPartition(i % 4)
     }
 }
 

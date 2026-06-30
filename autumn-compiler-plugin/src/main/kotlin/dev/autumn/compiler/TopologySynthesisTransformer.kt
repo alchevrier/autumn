@@ -190,7 +190,7 @@ class TopologySynthesisTransformer(
             val commitPollPartitionFunc = channelClass?.functions?.find { it.name.asString() == "commitPollPartition" }
             
             val runtimeClass = pluginContext.referenceClass(ClassId.topLevel(FqName("dev.autumn.channel.AutumnRuntime")))?.owner
-            val spawnFunc = runtimeClass?.functions?.find { it.name.asString() == "spawn" }
+            val spawnFunc = runtimeClass?.functions?.find { it.name.asString() == "spawnOscillator" }
 
             messageCollector.report(CompilerMessageSeverity.WARNING, "DEBUG CLASS: ${channelClass?.name?.asString()} POLL FUNC: ${pollFunc?.parent?.let { (it as? org.jetbrains.kotlin.ir.declarations.IrClass)?.name?.asString() }}")
             if (pollFunc != null && commitPollFunc != null && pollPartitionFunc != null && commitPollPartitionFunc != null) {
@@ -218,97 +218,82 @@ class TopologySynthesisTransformer(
                                         val lambdaBuilder = DeclarationIrBuilder(pluginContext, symbol)
                                         body = lambdaBuilder.irBlockBody {
                                             val chanValLocal = irTemporary(irCall(propertyGetter))
+
                                             val pollCall = irCall(pollPartitionFunc.symbol).apply {
                                                 dispatchReceiver = irGet(chanValLocal)
                                                 putValueArgument(0, irInt(i))
                                             }
                                             val polledIdx = irTemporary(pollCall, "idx_${channelInfo.name}_$i")
 
-                                            val anyHandledVar = irTemporary(irFalse(), "anyHandled", isMutable = true)
-                                            
-                                            val ifNotMinusOne = irIfThen(type = pluginContext.irBuiltIns.unitType,
+                                            val ifNotMinusOne = irIfThenElse(type = pluginContext.irBuiltIns.booleanType,
                                                 condition = irNotEquals(irGet(polledIdx), irInt(-1)),
                                                 thenPart = irBlock {
-                                                    +irSet(anyHandledVar, irTrue())
                                                     val eventType = handler.valueParameters[0].type
-                                    val targetClass = eventType.classOrNull?.owner as? org.jetbrains.kotlin.ir.declarations.IrClass
-                                    val constructor = targetClass?.constructors?.firstOrNull { it.isPrimary }
-                                    val arg = if (constructor != null) {
-                                        irCall(constructor.symbol).apply { putValueArgument(0, irGet(polledIdx)) }
-                                    } else {
-                                        irGet(polledIdx)
-                                    }
+                                                    val targetClass = eventType.classOrNull?.owner as? org.jetbrains.kotlin.ir.declarations.IrClass
+                                                    val constructor = targetClass?.constructors?.firstOrNull { it.isPrimary }
+                                                    val arg = if (constructor != null) {
+                                                        irCall(constructor.symbol).apply { putValueArgument(0, irGet(polledIdx)) }
+                                                    } else {
+                                                        irGet(polledIdx)
+                                                    }
 
-                                    // Telemetry weave
-                                    val observeAnnotation = handler.getAnnotation(FqName("dev.autumn.annotations.Observe"))
-                                    val hasObserve = observeAnnotation != null
-                                    
-                                    val observerNameArg = observeAnnotation?.getValueArgument(0) as? IrConst
-                                    val targetObserverName = (observerNameArg?.value as? String) ?: "metricsHistogram"
-                                    
-                                    val clockClass = pluginContext.referenceClass(ClassId.topLevel(FqName("dev.autumn.scheduler.AutumnClock")))?.owner
-                                    val nowFunc = clockClass?.functions?.firstOrNull { it.name.asString() == "now" }
-                                    val histogramClass = pluginContext.referenceClass(ClassId.topLevel(FqName("dev.autumn.observatory.LatencyHistogram")))?.owner
-                                    val recordDeltaFunc = histogramClass?.functions?.firstOrNull { it.name.asString() == "recordDelta" }
-                                    
-                                    var targetHistogram: IrProperty? = null
-                                    declaration.file.declarations.forEach {
-                                        if (it is IrProperty && it.hasAnnotation(FqName("dev.autumn.annotations.ObserveChannel"))) {
-                                            val chanAnnot = it.getAnnotation(FqName("dev.autumn.annotations.ObserveChannel"))
-                                            val chanArg = chanAnnot?.getValueArgument(0) as? IrConst
-                                            val chanName = (chanArg?.value as? String) ?: "metricsHistogram"
-                                            if (chanName == targetObserverName || it.name.asString() == targetObserverName) {
-                                                targetHistogram = it
-                                            }
-                                        } else if (it is IrProperty && it.name.asString() == targetObserverName) {
-                                            // Fallback to exactly matching the property name if the user forgot the annotation
-                                            targetHistogram = it
-                                        }
-                                    }
+                                                    // Telemetry weave
+                                                    val observeAnnotation = handler.getAnnotation(org.jetbrains.kotlin.name.FqName("dev.autumn.annotations.Observe"))
+                                                    val hasObserve = observeAnnotation != null
+                                                    
+                                                    val clockClass = pluginContext.referenceClass(org.jetbrains.kotlin.name.ClassId.topLevel(org.jetbrains.kotlin.name.FqName("dev.autumn.scheduler.AutumnClock")))?.owner
+                                                    val nowFunc = clockClass?.functions?.firstOrNull { it.name.asString() == "now" }
+                                                    val targetObserverName = (observeAnnotation?.getValueArgument(0) as? IrConst)?.value as? String ?: "metricsHistogram"
+                                                    val histogramClass = pluginContext.referenceClass(org.jetbrains.kotlin.name.ClassId.topLevel(org.jetbrains.kotlin.name.FqName("dev.autumn.observatory.LatencyHistogram")))?.owner
+                                                    val recordDeltaFunc = histogramClass?.functions?.firstOrNull { it.name.asString() == "recordDelta" }
+                                                    
+                                                    var targetHistogram: IrProperty? = null
+                                                    declaration.file.declarations.forEach {
+                                                        if (it is IrProperty && (it.name.asString() == targetObserverName || 
+                                                            (it.getAnnotation(org.jetbrains.kotlin.name.FqName("dev.autumn.annotations.ObserveChannel"))?.getValueArgument(0) as? IrConst)?.value == targetObserverName)) {
+                                                            targetHistogram = it
+                                                        }
+                                                    }
 
-                                    if (hasObserve && nowFunc != null && recordDeltaFunc != null && targetHistogram != null) {
-                                        messageCollector.report(CompilerMessageSeverity.INFO, "[Autumn Observatory] Weaving telemetry around '${handler.name.asString()}' outside capture.")
-                                        val rdtscStart = irTemporary(irCall(nowFunc.symbol).apply {
-                                            dispatchReceiver = irGetObject(clockClass.symbol)
-                                        }, "rdtscStart")
-                                        
-                                        +irCall(handler.symbol).apply { putValueArgument(0, arg) }
-                                        
-                                        val rdtscEnd = irCall(nowFunc.symbol).apply {
-                                            dispatchReceiver = irGetObject(clockClass.symbol)
-                                        }
-                                        val longMinus = pluginContext.irBuiltIns.longClass.owner.functions.first { 
-                                            it.name.asString() == "minus" && it.valueParameters[0].type == pluginContext.irBuiltIns.longType 
-                                        }
-                                        val delta = irCall(longMinus.symbol).apply {
-                                            dispatchReceiver = rdtscEnd
-                                            putValueArgument(0, irGet(rdtscStart))
-                                        }
-                                        val histogramGetter = targetHistogram.getter?.symbol
-                                        if (histogramGetter != null) {
-                                            +irCall(recordDeltaFunc.symbol).apply {
-                                                dispatchReceiver = irCall(histogramGetter)
-                                                putValueArgument(0, delta)
-                                            }
-                                        }
-                                    } else {
-                                        +irCall(handler.symbol).apply { putValueArgument(0, arg) }
-                                    }
-                                    
-                                    +irCall(commitPollFunc.symbol).apply { dispatchReceiver = irGet(chanValLocal) }
-
+                                                    if (hasObserve && nowFunc != null && recordDeltaFunc != null && targetHistogram != null) {
+                                                        val rdtscStart = irTemporary(irCall(nowFunc.symbol).apply { dispatchReceiver = irGetObject(clockClass.symbol) }, "rdtscStart")
+                                                        +irCall(handler.symbol).apply { putValueArgument(0, arg) }
+                                                        val rdtscEnd = irCall(nowFunc.symbol).apply { dispatchReceiver = irGetObject(clockClass.symbol) }
+                                                        val longMinus = pluginContext.irBuiltIns.longClass.owner.functions.first { it.name.asString() == "minus" && it.valueParameters[0].type == pluginContext.irBuiltIns.longType }
+                                                        val delta = irCall(longMinus.symbol).apply { dispatchReceiver = rdtscEnd; putValueArgument(0, irGet(rdtscStart)) }
+                                                        val histogramGetter = targetHistogram!!.getter?.symbol
+                                                        if (histogramGetter != null) {
+                                                            +irCall(recordDeltaFunc.symbol).apply { dispatchReceiver = irCall(histogramGetter); putValueArgument(0, delta) }
+                                                        }
+                                                    } else {
+                                                        +irCall(handler.symbol).apply { putValueArgument(0, arg) }
+                                                    }
+                                                    
+                                                    +irCall(commitPollFunc.symbol).apply { dispatchReceiver = irGet(chanValLocal) }
+                                                    
+                                                    // Tell the HardwareOscillator we performed work
+                                                    +org.jetbrains.kotlin.ir.expressions.impl.IrReturnImpl(-1, -1, pluginContext.irBuiltIns.nothingType, symbol, irTrue())
+                                                },
+                                                elsePart = irBlock {
+                                                    // Tell the HardwareOscillator we starved (no data)
+                                                    +org.jetbrains.kotlin.ir.expressions.impl.IrReturnImpl(-1, -1, pluginContext.irBuiltIns.nothingType, symbol, irFalse())
                                                 }
                                             )
                                             +ifNotMinusOne
                                         }
                                     }
-                                    val functionType = pluginContext.irBuiltIns.functionN(0).typeWith(pluginContext.irBuiltIns.unitType)
+                                    // Make lambda return Boolean
+                                    val functionType = pluginContext.irBuiltIns.functionN(0).typeWith(pluginContext.irBuiltIns.booleanType)
+                                    lambda.returnType = pluginContext.irBuiltIns.booleanType
                                     val lambdaExpr = org.jetbrains.kotlin.ir.expressions.impl.IrFunctionExpressionImpl(
                                         -1, -1, functionType, lambda as org.jetbrains.kotlin.ir.declarations.IrSimpleFunction, org.jetbrains.kotlin.ir.expressions.IrStatementOrigin.LAMBDA
                                     )
                                     val spawnCall = builder.irCall(spawnFunc.symbol).apply {
                                         dispatchReceiver = builder.irGetObject(runtimeClass.symbol)
-                                        putValueArgument(0, lambdaExpr)
+                                        // arg 0 = coreId
+                                        putValueArgument(0, builder.irInt(i))
+                                        // arg 1 = tickBlock
+                                        putValueArgument(1, lambdaExpr)
                                     }
                                     +spawnCall
                                 }

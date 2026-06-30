@@ -71,4 +71,23 @@ class CycleBudgetCases {
             metrics[i] = i * 2L
         }
     }
+
+    /**
+     * ⛔ UNBOUNDED LOOP TRAP (WCET COMPILER ERROR)
+     *
+     * If this handler were attached to an `@InjectTopology(wcetAuditable=true)` pipeline,
+     * the compiler would instantly flag this as a fatal WCET error. Static analysis 
+     * cannot compute the Worst-Case Execution Time (WCET) of an unbounded `while (true)` 
+     * loop without empirical markers.
+     */
+    @Observe("infiniteTrap")
+    @LongLived
+    fun infiniteTrapHandler(state: Int) {
+        var active = true
+        // Missing @MaxIterations entirely!
+        while (active) {
+            metrics[0] = state.toLong()
+            if (state == 0) active = false
+        }
+    }
 }

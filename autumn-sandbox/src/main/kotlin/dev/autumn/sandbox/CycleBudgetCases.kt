@@ -54,4 +54,21 @@ class CycleBudgetCases {
             metrics[0] = Math.max(metrics[0], latencyNano)
         }
     }
+
+    /**
+     * ✅ @MaxIterations WCET AUDIT COMPLIANCE
+     *
+     * Under ADR-0028 Formal Certificates, `@InjectTopology(wcetAuditable=true)` 
+     * requires strict loop bounds to calculate the Control Flow Graph.
+     * Without `@MaxIterations`, this loop would cause a compiler error during audit.
+     */
+    @Observe("auditPath")
+    @CycleBudget(limit = 500)
+    @LongLived
+    fun auditablePath() {
+        @dev.autumn.annotations.MaxIterations(10)
+        for (i in 0 until 10) {
+            metrics[i] = i * 2L
+        }
+    }
 }

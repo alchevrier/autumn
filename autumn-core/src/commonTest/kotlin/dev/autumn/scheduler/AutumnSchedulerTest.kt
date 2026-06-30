@@ -17,16 +17,16 @@ class AutumnSchedulerTest {
         var handledIdx = -1
 
         // In the fully assembled backend, this binds channels with their topological weights.
-        arbiter.addChannel(ingressQueue.buffer, weight = 1) { idx ->
+        arbiter.addChannel(ingressQueue.partitions[0], weight = 1) { idx ->
             handledIdx = idx
         }
         scheduler.bindArbiter(arbiter)
 
         // Network Ingress Simulation (Inject 5 items)
         for (i in 0 until 5) {
-            val idx = ingressQueue.buffer.offer()
+            val idx = ingressQueue.partitions[0].offer()
             assertTrue(idx != -1)
-            ingressQueue.buffer.commitOffer()
+            ingressQueue.partitions[0].commitOffer()
         }
 
         // Rather than a blind while(true), the environment explicitly clocks the pipeline 
@@ -34,11 +34,11 @@ class AutumnSchedulerTest {
             scheduler.tick() // Deterministic clock step
         }
 
-        assertEquals(10L, scheduler.getClock(), "Clock should track exact ticks")
+        assertEquals(10L, scheduler.getClock())
         assertEquals(5, handledIdx) // Last inserted item was 5 (1-based index)
         
         // Assert the queue was drained natively by the synthesized Arbiter
-        val remainingIdx = ingressQueue.buffer.poll()
+        val remainingIdx = ingressQueue.partitions[0].poll()
         assertEquals(-1, remainingIdx, "Scheduler should have swept the channel entirely")
     }
 

@@ -4,12 +4,12 @@ This document outlines the strategic priorities for the Autumn framework, transi
 
 ## Phase 1: Compliance & Observability (Current Priority)
 **Goal:** Prove the system's safety and provide world-class tooling.
-*   [ ] **RTOS Audit Certification (`autumn-certifier`)**: Implement the Gradle plugin that consumes `topology.json` and emits cryptographically signed WCET and Zero-Allocation guarantees (ADR-0026 & ADR-0028).
+*   [x] **RTOS Audit Certification (`autumn-certifier`)**: Implement the Gradle plugin that consumes `topology.json` and emits cryptographically signed WCET and Zero-Allocation guarantees (ADR-0026 & ADR-0028).
     *   *Audit Constraint 1:* Must mathematically account for baseline OS/Hardware jitter (e.g., non-maskable hardware interrupts, SMIs).
     *   *Audit Constraint 2:* Must prove and enforce **Memory Bus Isolation**. The compiler/certifier must guarantee that cold-path execution (e.g., logging) cannot steal DRAM bandwidth, induce L3 cache evictions, or stall the hot path via memory controller saturation.
     *   *Audit Constraint 3:* Must extract the **Control Flow Graph (CFG)** to eliminate infeasible paths (using ILP/Path Solvers) and strictly forbid unbounded loops, bringing mathematical reality to the WCET static bounds.
     *   *Audit Constraint 4:* Must support **Hybrid WCET Tracing** (via Linux `perf` / Intel PT). To counter superscalar hardware timing anomalies (domino effects), the certifier must combine the static CFG cycle limits with dynamic physical hardware benchmarks to issue the final cryptographic guarantee.
-*   [ ] **IDE Performance Center Enhancements**: Expand `autumn-ide-plugin` to read live telemetry. The visualization must be rooted at `@InjectTopology`, graphing only what trickles down from that entry point, with dedicated UI tabs for each distinct pipeline (from `@BoundaryChannel` to end).
+*   [x] **IDE Performance Center Enhancements**: Expand `autumn-ide-plugin` to read live telemetry. The visualization must be rooted at `@InjectTopology`, graphing only what trickles down from that entry point, with dedicated UI tabs for each distinct pipeline (from `@BoundaryChannel` to end).
     *   *Visual Nodes:* Draw interactive graph boxes representing each function and boundary, clearly showing cycle budgets, static limits, and live telemetry data.
     *   *Low-Level Drill-Down:* Provide an interactive breakdown of operations inside each box, mapping Kotlin code down through the compiler target layers. This means showing how the Kotlin IR translates into JVM Bytecode, LLVM Bitcode, ARM64 Assembly (iOS/Android), or x86_64 Assembly (Native Linux), alongside the target-specific micro-architectural cycle cost per operation.
 *   [ ] **Formalize the Cold Path**: Finalize the `@ColdChannel` abstraction to allow the hot-path to offload blocking I/O, logging, and DB persistence without inducing GC pressure or OS context switches.

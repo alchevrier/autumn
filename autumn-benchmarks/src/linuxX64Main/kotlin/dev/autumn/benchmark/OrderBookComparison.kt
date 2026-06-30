@@ -200,7 +200,6 @@ val globalScheduler = dev.autumn.scheduler.AutumnScheduler().apply {
 fun bootstrapAutumnPipeline() {
     println("\n--- Executing JVM Compiler-Rewritten Topology ---")
     // Simulate NIC filling the buffer into the memory bank
-    AutumnMemoryBank.allocate(16777216L * 100L)
     startTime = dev.autumn.scheduler.AutumnClock.now()
     
     // Bind the unrolled tick and start the self-regulated clock!

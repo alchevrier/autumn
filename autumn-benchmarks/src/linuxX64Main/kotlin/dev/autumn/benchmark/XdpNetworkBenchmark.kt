@@ -49,9 +49,6 @@ fun xdpMain() {
     println("--- Executing XDP Hardware Network Boundary ---")
     println("[Warning] This requires root to bind AF_XDP to the veth1 network interface.")
     
-    // Allocate the unified physical BRAM equivalent (UMEM + Queues)
-    AutumnMemoryBank.allocate(16777216L * 100L)
-    
     // Boot the FSM Shards (Pins 4 CPU cores!)
     bootXdpPipeline()
 

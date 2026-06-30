@@ -4,6 +4,7 @@ import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
+import org.jetbrains.kotlin.ir.util.getAnnotation
 
 class AutumnIrGenerationExtension(
     private val messageCollector: MessageCollector
@@ -12,6 +13,25 @@ class AutumnIrGenerationExtension(
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
         TopologyExportSerializer.clear()
         messageCollector.report(org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.WARNING, "=== IR GENERATION ENTRY: ${moduleFragment.name} ===")
+
+        var isWcetAuditable = false
+        val INJECT_TOPOLOGY_FQ = org.jetbrains.kotlin.name.FqName("dev.autumn.annotations.InjectTopology")
+        
+        moduleFragment.accept(object : org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid {
+            override fun visitElement(element: org.jetbrains.kotlin.ir.IrElement) {
+                element.acceptChildren(this, null)
+            }
+            override fun visitFunction(declaration: org.jetbrains.kotlin.ir.declarations.IrFunction) {
+                val injectAnnot = declaration.getAnnotation(INJECT_TOPOLOGY_FQ)
+                if (injectAnnot != null) {
+                    val auditableArg = injectAnnot.getValueArgument(0) as? org.jetbrains.kotlin.ir.expressions.IrConst
+                    if (auditableArg?.value == true) {
+                        isWcetAuditable = true
+                    }
+                }
+                super.visitFunction(declaration)
+            }
+        }, null)
 
         // 1. Process literal injections for circuit breaker budgets
         val injectionTransformer = BudgetInjectionTransformer(pluginContext, messageCollector)
@@ -23,7 +43,7 @@ class AutumnIrGenerationExtension(
 
         val cacheVisitor = ThreadCacheBudgetVisitor(pluginContext, messageCollector)
 
-        val cycleVisitor = CycleBudgetVisitor(pluginContext, messageCollector)
+        val cycleVisitor = CycleBudgetVisitor(pluginContext, messageCollector, isWcetAuditable)
         moduleFragment.accept(cycleVisitor, null)
         moduleFragment.accept(cacheVisitor, null)
 

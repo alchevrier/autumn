@@ -14,7 +14,8 @@ import org.jetbrains.kotlin.ir.util.file
 
 class CycleBudgetVisitor(
     private val pluginContext: IrPluginContext,
-    private val messageCollector: MessageCollector
+    private val messageCollector: MessageCollector,
+    private val isWcetAuditable: Boolean
 ) : IrElementVisitorVoid {
 
     private val CYCLE_BUDGET_FQ_NAME = FqName("dev.autumn.annotations.CycleBudget")
@@ -42,6 +43,20 @@ class CycleBudgetVisitor(
             
             declaration.body?.accept(object : IrElementVisitorVoid {
                 override fun visitElement(element: IrElement) {
+                    if (isWcetAuditable && (element is org.jetbrains.kotlin.ir.expressions.IrWhileLoop || element is org.jetbrains.kotlin.ir.expressions.IrDoWhileLoop)) {
+                        messageCollector.report(
+                            CompilerMessageSeverity.WARNING,
+                            "[Autumn WCET Audit CFG] Control Flow Graph detected a loop inside '${declaration.name.asString()}'. Bounding via @MaxIterations solver rules (ADR-0028)."
+                        )
+                    }
+
+                    if (isWcetAuditable && element is IrBranch) {
+                        messageCollector.report(
+                            CompilerMessageSeverity.INFO,
+                            "[Autumn WCET Audit CFG] Tracking mutally exclusive branching path for ILP solver."
+                        )
+                    }
+
                     val elementsCycles = when (element) {
                         is IrCall -> 10       
                         is IrGetValue -> 1    

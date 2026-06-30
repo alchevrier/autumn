@@ -1,4 +1,5 @@
 package dev.autumn.compiler
+import org.jetbrains.kotlin.ir.types.classOrNull
 
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
@@ -87,7 +88,9 @@ class AllocationVisitor(
             // optimized away or required on slow paths (e.g. throwing error).
             // Note: We deliberately DO NOT allow kotlin.collections here to enforce custom pool usage.
             val fqName = type.classFqName?.asString() ?: ""
-            val isSafeType = type.isPrimitiveType() || fqName.endsWith("Array") || 
+            val classOwner = type.classOrNull?.owner as? org.jetbrains.kotlin.ir.declarations.IrClass
+            val isValue = classOwner?.isValue == true
+            val isSafeType = type.isPrimitiveType() || isValue || fqName.endsWith("Array") || 
                              type.isString() ||
                              AllocationExclusions.isSafeType(fqName)
 

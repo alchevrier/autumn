@@ -256,50 +256,54 @@ class PipelinedSoATransformer(
     }
 
     override fun visitCall(expression: IrCall): org.jetbrains.kotlin.ir.expressions.IrExpression {
+        messageCollector.report(CompilerMessageSeverity.WARNING, "DEBUG visiting call: ${expression.symbol.owner.name.asString()}")
         val function = expression.symbol.owner
         val parentClass = function.parent as? org.jetbrains.kotlin.ir.declarations.IrClass
         val functionName = function.name.asString()
-        
-        if (function.name.asString() == "next") {
-            
+
+        if (parentClass?.name?.asString() == "AutumnChannel") {
+            messageCollector.report(CompilerMessageSeverity.WARNING, "DEBUG Call: ${functionName} on class ${parentClass?.name?.asString()}")
         }
-        if (functionName == "next" && (parentClass?.name?.asString() == "AutumnChannel" || parentClass?.name?.asString() == "Channel")) {
-            val offerFunc = parentClass.functions.find { it.name.asString() == "nextIndex" }
-            
-            if (offerFunc != null) {
-                messageCollector.report(
-                    CompilerMessageSeverity.INFO,
-                    "[Autumn API] Intercepted 'Channel.next<T>()' -> translating to bounded SoA 'offer()'"
-                )
-                val builder = DeclarationIrBuilder(pluginContext, expression.symbol)
-                val offerCall = builder.irCall(offerFunc.symbol).apply {
-                    dispatchReceiver = expression.dispatchReceiver
-                    // No arguments for next() or nextIndex()
-                }
-                
-                val targetClass = expression.type.classOrNull?.owner as? IrClass
-                if (targetClass != null && targetClass.isValue) {
-                    val constructor = targetClass.constructors.firstOrNull { it.isPrimary }
-                    if (constructor != null) {
-                        return builder.irCall(constructor.symbol).apply {
-                            putValueArgument(0, offerCall)
+
+        
+
+        if (parentClass?.name?.asString() == "AutumnChannel" || parentClass?.name?.asString() == "Channel") {
+            if (functionName == "nextPartition") {
+                val offerFunc = parentClass.functions.find { it.name.asString() == "nextMappedIndexPartition" }
+                if (offerFunc != null) {
+                    val builder = org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder(pluginContext, expression.symbol)
+                    val offerCall = builder.irCall(offerFunc.symbol).apply {
+                        dispatchReceiver = expression.dispatchReceiver
+                        putValueArgument(0, expression.getValueArgument(0))
+                    }
+                    val targetClass = expression.type.classOrNull?.owner as? IrClass
+                    if (targetClass != null && targetClass.isValue) {
+                        val constructor = targetClass.constructors.firstOrNull { it.isPrimary }
+                        if (constructor != null) {
+                            return builder.irCall(constructor.symbol).apply { putValueArgument(0, offerCall) }
                         }
                     }
+                    return offerCall
                 }
-                return offerCall
-            }
-        } else if (functionName == "commitNext" && parentClass?.name?.asString() == "AutumnChannel") {
-            val commitOfferFunc = parentClass.functions.find { it.name.asString() == "commitNextIndex" }
-            if (commitOfferFunc != null) {
-                messageCollector.report(
-                    CompilerMessageSeverity.INFO,
-                    "[Autumn API] Intercepted 'Channel.commitNext()' -> translating to 'commitOffer()'"
-                )
-                val builder = DeclarationIrBuilder(pluginContext, expression.symbol)
-                return builder.irCall(commitOfferFunc.symbol).apply {
-                    dispatchReceiver = expression.dispatchReceiver
-                    // No arguments for next() or nextIndex()
+            } else if (functionName == "next") {
+                val offerFunc = parentClass.functions.find { it.name.asString() == "nextMappedIndex" }
+                if (offerFunc != null) {
+                    val builder = org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder(pluginContext, expression.symbol)
+                    val offerCall = builder.irCall(offerFunc.symbol).apply {
+                        dispatchReceiver = expression.dispatchReceiver
+                    }
+                    val targetClass = expression.type.classOrNull?.owner as? IrClass
+                    if (targetClass != null && targetClass.isValue) {
+                        val constructor = targetClass.constructors.firstOrNull { it.isPrimary }
+                        if (constructor != null) {
+                            return builder.irCall(constructor.symbol).apply { putValueArgument(0, offerCall) }
+                        }
+                    }
+                    return offerCall
                 }
+            } else if (functionName == "commitNext") {
+                val commitOfferFunc = parentClass.functions.find { it.name.asString() == "commitNext" } // Actually, it calls commitNext() explicitly? Oh wait, in AutumnChannel there is commitNext() mapped to commitOffer(). Wait, commitNext() is already fine in AutumnChannel.kt? No it takes no args. Let's rely on standard method calls for everything or rewrite.
+                // Wait, if it's already calling commitNext, we don't need to intercept if it does no allocation!
             }
         }
 

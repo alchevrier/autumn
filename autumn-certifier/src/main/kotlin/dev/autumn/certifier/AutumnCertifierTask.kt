@@ -67,13 +67,20 @@ abstract class AutumnCertifierTask : DefaultTask() {
                 val output = process.inputStream.bufferedReader().readText()
                 process.waitFor()
                 
-                // Extremely naive regex to scrape cycles from perf output (e.g. "  234,453,123      cycles")
-                val cycleMatch = Regex("""([\d,]+)\s+cycles""").find(output)
-                if (cycleMatch != null) {
-                    empiricalCycles = cycleMatch.groupValues[1].replace(",", "").toLong()
-                    logger.lifecycle("   → Physical Hardware Measured: $empiricalCycles total cycles execution time.")
+                if (output.contains("Access to performance monitoring") || output.contains("perf_event_paranoid")) {
+                    logger.error("\n[Autumn SecOps] Kernel blocked hardware trace access (perf_event_paranoid).")
+                    logger.error("   → To certify this pipeline, you must temporarily allow user-space hardware tracing:")
+                    logger.error("   → Run: sudo sysctl -w kernel.perf_event_paranoid=-1")
+                    logger.error("   → Then re-run: ./gradlew autumnCertify\n")
                 } else {
-                    logger.lifecycle("   → Notice: Could not parse perf stdout (or perf is not installed/permitted).")
+                    // Extremely naive regex to scrape cycles from perf output (e.g. "  234,453,123      cycles")
+                    val cycleMatch = Regex("""([\d,]+)\s+cycles""").find(output)
+                    if (cycleMatch != null) {
+                        empiricalCycles = cycleMatch.groupValues[1].replace(",", "").toLong()
+                        logger.lifecycle("   → Physical Hardware Measured: $empiricalCycles total cycles execution time.")
+                    } else {
+                        logger.lifecycle("   → Notice: Could not parse perf stdout. Output was:\n$output")
+                    }
                 }
             } catch (e: Exception) {
                 logger.lifecycle("   → Notice: perf execution failed (OS may not support hardware counters). Reason: ${e.message}")

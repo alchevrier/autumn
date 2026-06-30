@@ -72,7 +72,7 @@ class HighFrequencyTradingNode {
     @ThreadCacheBudget(32768)
     fun processMarketData() {
         // Poll for a valid array slot index (Zero-Allocation)
-        val idx = auditLogQueue.buffer.offer()
+        val idx = auditLogQueue.nextIndex()
         if (idx == -1) return // Backpressure applied
         
         // Instantate the Flyweight Wrapper (Inline Value Class erases to an Int!)
@@ -88,7 +88,7 @@ class HighFrequencyTradingNode {
         }
         
         // Commit the index across the ring buffer
-        auditLogQueue.buffer.commitOffer()
+        auditLogQueue.commitNext()
         
         // ❌ ERROR: Accessing a @ColdChannel inside a @HotPath triggers L1 cache eviction protection!
         // UNCOMMENT TO TRIGGER COMPILER ERROR ([Autumn] Illegal @ColdChannel usage inside a @HotPath.)

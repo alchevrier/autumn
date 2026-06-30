@@ -29,7 +29,7 @@ class RiskEngineConfigNode {
 
     fun testSessionMemoryInjection() {
         println("Validating SessionChannel -> MemoryBank Routing...")
-        riskConfigChannel.buffer.offer()
+        riskConfigChannel.nextIndex()
         val config = RiskConfigFlyweight(0)
         
         config.maxRiskLimit = 50000

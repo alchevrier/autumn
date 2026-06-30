@@ -79,10 +79,11 @@ class TopologySynthesisTransformer(
                         else -> "RegisterChannel"
                     }
 
-                    val shardedArgument = annot?.getValueArgument(2) as? IrConst
+                    // Check actual argument bounds dynamically since different channel annotations have different counts
+                    val shardedArgument = if (annot != null && annot.valueArgumentsCount > 2) annot.getValueArgument(2) as? IrConst else null
                     val sharded = (shardedArgument?.value as? Int) ?: 1
                     
-                    val shardKeyArgument = annot?.getValueArgument(3) as? IrConst
+                    val shardKeyArgument = if (annot != null && annot.valueArgumentsCount > 3) annot.getValueArgument(3) as? IrConst else null
                     val shardKey = (shardKeyArgument?.value as? String) ?: ""
 
                     discoveredChannels.add(ChannelTopologyInfo(

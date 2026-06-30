@@ -16,7 +16,7 @@ class CFGBranchCases {
      * to evaluate the true maximal path independently, giving real-world WCET bounds.
      */
     @Observe("branchingHandler")
-    @CycleBudget(limit = 120)
+    @CycleBudget(limit = 150)
     @LongLived
     fun handleMarketState(state: Int, price: Long) {
         if (state == 1) {

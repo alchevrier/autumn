@@ -11,6 +11,8 @@ object TopologyExportSerializer {
         val name: String,
         val channelType: String = "",
         val capacity: Int = 0,
+        val sharded: Int = 1,
+        val shardKey: String = "",
         val cycles: Int = 0,
         val portPressure: String = "",
         val target: String = "",
@@ -41,6 +43,8 @@ object TopologyExportSerializer {
                 sb.append("    \"name\": \"${comp.name}\",\n")
                 sb.append("    \"channelType\": \"${comp.channelType}\",\n")
                 sb.append("    \"capacity\": ${comp.capacity},\n")
+                sb.append("    \"sharded\": ${comp.sharded},\n")
+                sb.append("    \"shardKey\": \"${comp.shardKey}\",\n")
                 sb.append("    \"cycles\": ${comp.cycles},\n")
                 sb.append("    \"portPressure\": \"${comp.portPressure}\",\n")
                 sb.append("    \"target\": \"${comp.target}\",\n")

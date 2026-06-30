@@ -37,6 +37,7 @@ class TopologySynthesisTransformer(
         val capacity: Int,
         val type: String,
         val sharded: Int,
+        val shardKey: String = "",
         val property: IrProperty
     )
 
@@ -78,7 +79,11 @@ class TopologySynthesisTransformer(
                         else -> "RegisterChannel"
                     }
 
-                    val sharded = 1
+                    val shardedArgument = annot?.getValueArgument(2) as? IrConst
+                    val sharded = (shardedArgument?.value as? Int) ?: 1
+                    
+                    val shardKeyArgument = annot?.getValueArgument(3) as? IrConst
+                    val shardKey = (shardKeyArgument?.value as? String) ?: ""
 
                     discoveredChannels.add(ChannelTopologyInfo(
                         name = declaration.name.asString(),
@@ -86,6 +91,7 @@ class TopologySynthesisTransformer(
                         capacity = capacity,
                         type = typeString,
                         sharded = sharded,
+                        shardKey = shardKey,
                         property = declaration
                     ))
                 }
@@ -118,6 +124,12 @@ class TopologySynthesisTransformer(
                 else -> "RegisterChannel"
             }
             
+            val shardedArgument = annot?.getValueArgument(2) as? IrConst
+            val sharded = (shardedArgument?.value as? Int) ?: 1
+            
+            val shardKeyArgument = annot?.getValueArgument(3) as? IrConst
+            val shardKey = (shardKeyArgument?.value as? String) ?: ""
+            
             val fileEntry = declaration.file.fileEntry
             val srcFile = fileEntry.name
             val srcLine = fileEntry.getLineNumber(declaration.startOffset)
@@ -129,6 +141,8 @@ class TopologySynthesisTransformer(
                     name = declaration.name.asString(),
                     channelType = typeString,
                     capacity = capacity,
+                    sharded = sharded,
+                    shardKey = shardKey,
                     target = "",
                     sourceFile = srcFile,
                     sourceLine = srcLine

@@ -7,6 +7,11 @@
         <compositeConfiguration>
           <compositeBuild compositeDefinitionSource="SCRIPT">
             <builds>
+              <build path="$PROJECT_DIR$/autumn-certifier" name="autumn-certifier">
+                <projects>
+                  <project path="$PROJECT_DIR$/autumn-certifier" />
+                </projects>
+              </build>
               <build path="$PROJECT_DIR$/autumn-gradle-plugin" name="autumn-gradle-plugin">
                 <projects>
                   <project path="$PROJECT_DIR$/autumn-gradle-plugin" />
@@ -16,16 +21,20 @@
           </compositeBuild>
         </compositeConfiguration>
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="gradleHome" value="$USER_HOME$/.sdkman/candidates/gradle/current" />
+        <option name="gradleJvm" value="#JAVA_HOME" />
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/autumn-benchmarks" />
             <option value="$PROJECT_DIR$/autumn-buckets" />
+            <option value="$PROJECT_DIR$/autumn-certifier" />
             <option value="$PROJECT_DIR$/autumn-compiler-plugin" />
             <option value="$PROJECT_DIR$/autumn-config" />
             <option value="$PROJECT_DIR$/autumn-core" />
             <option value="$PROJECT_DIR$/autumn-demo" />
             <option value="$PROJECT_DIR$/autumn-gradle-plugin" />
+            <option value="$PROJECT_DIR$/autumn-ide-plugin" />
             <option value="$PROJECT_DIR$/autumn-observatory" />
             <option value="$PROJECT_DIR$/autumn-resolver" />
             <option value="$PROJECT_DIR$/autumn-sandbox" />

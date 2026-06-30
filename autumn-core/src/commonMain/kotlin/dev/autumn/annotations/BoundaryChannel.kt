@@ -19,5 +19,6 @@ package dev.autumn.annotations
 annotation class BoundaryChannel(
     val capacity: Int = 1024,
     val weight: Int = 100,
-    val sharded: Int = 1
+    val sharded: Int = 1,
+    val shardKey: String = ""
 )

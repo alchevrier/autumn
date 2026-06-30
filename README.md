@@ -4,7 +4,9 @@
 ![Maven Central](https://img.shields.io/maven-central/v/io.github.alchevrier/autumn-core.svg)
 ![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
 
-Circuit-based, zero-allocation frontend skeleton and hardware-sympathetic backend engine for Kotlin Multiplatform.
+**Mathematical Runtime Certification via Structural Static Analysis for Kotlin Multiplatform.**
+
+Autumn aims to be an aerospace-grade, high-frequency execution framework that introduces **Clock-Aware Programming** to commodity CPUs. By treating memory as a pure static topology and enforcing mathematical cycle limits at the compiler level, Autumn's goal is to allow standard CI/CD pipelines to cryptographically certify software execution bounds.
 
 ## What's New in v1.1.0
 
@@ -13,31 +15,45 @@ Autumn v1.1.0 massive leaps forward in hardware observability and LLVM execution
 - 🛑 **Compile-Time Hardware Constraints (`@CycleBudget`):** IR evaluation natively performed at compile time. If your branching logic or allocations exceed the physical cycle limit of a CPU, *the compiler breaks your build*.
 - 🛠 **The Autumn IDE Performance Center:** A native IntelliJ IDEA Plugin using JetBrains Compose. It visually graphs the pipeline topology and adds live UI gutters (`⚡ 37 / 60 Cycles | Port 1 ALU Pressure`) straight to your code as you type, entirely fueled by JSON telemetry emitted by the K2 compiler.
 
-## What is Autumn?
+## What is Clock-Aware Programming?
 
+Traditional managed software hides temporal uncertainty behind dynamic thread schedulers, expensive atomic locks, and unpredictable Garbage Collection. Hardware, however, is deterministic because physical timing is a fundamental design rule. 
 
-Autumn is a Kotlin Multiplatform framework that makes **circuit-aware programming accessible across all platforms**. At its core, Autumn aligns software architecture with the physical reality of a computer: an event-driven system subscribing to the clock of the CPU.
+Autumn attempts to bring this physical rigor to Kotlin by exploring three architectural pillars:
 
-Traditional software abstractions rely on expensive object graphs, OS-level thread scheduling, and unpredictable Garbage Collection. Hardware, however, processes continuous signals through bounded registers, physical cache lines, and deterministic clock ticks. Autumn brings this mechanical sympathy to high-level code by applying hardware-aware systems engineering techniques directly at the design and compiler level.
+### 1. Unified Static Memory (Zero-Allocation by Design)
+Because memory layouts are entirely flattened and allocated statically at boot (`AutumnMemoryBank`), there is no pointer-chasing and no Garbage Collector footprint. Applications map directly to the CPU's L1/L2 cache, opening the door for high-performance zero-copy auditing and deterministic state databases.
 
-Using custom Kotlin K2 Compiler plugins, Autumn translates declarative, idiomatic Kotlin into lock-free, zero-allocation Finite State Machines (FSMs) connected by primitive ring-buffer wires. By bypassing standard OS abstractions and treating commodity CPUs like custom ASICs, Autumn guarantees deterministic, nanosecond-tier latency—whether you are deploying a bare-metal High-Frequency Trading (HFT) pipeline on Linux or rendering a stutter-free 120fps Jetpack Compose UI on Android, Web, or iOS.
+### 2. The Universal FSM Boundary (Eliminating Asynchronous I/O)
+Modern software manages slow communication (Network, Disk, Databases, HTTP) using abstractions like Coroutines, Promises, or Async/Await. These mechanisms introduce massive overhead through context switching and heap-allocated state machines. 
 
-## Core pipeline: Socket to Pixel
+Autumn discards the asynchronous model entirely by abstracting *all* costly communication into a **BoundaryChannel**. The Business Logic is modeled as a pure Finite State Machine (FSM) that never blocks, never sleeps, and never waits. It aims to execute deterministically, computing state transitions instantly. Any interaction with the unpredictable "outside world" is pushed across a zero-copy ring-buffer boundary. Whether the event is an AF_XDP network packet, an `io_uring` SSD read, or an HTTP payload, the application purely reacts to memory-mapped state transitions. Hardware latency is conceptually partitioned away from the logic.
+
+### 3. Deterministic Threading (Lock-Free by Schedule)
+Autumn explores eliminating atomic variables and Mutex locks in the hot path. Data entering the system is passed through a lock-free `HashRouter`, which shards the data and statically routes it to a specific `Arbiter` core. Because the execution budget is bounded and thread affinity is isolated, the goal is for synchronization to happen by *timing schedule*, rather than runtime blocking.
+
+## The Autumn Certifier (`autumn-certifier`)
+
+Because the architecture depends on deterministic memory and pinned routines, Autumn aims to physically prove its behavior.
+
+During compilation, the K2 `TopologySynthesisTransformer` extracts the exact Control Flow Graphs (CFG) and loop boundaries (`@MaxIterations`) into a JSON topology. The `autumn-certifier` Gradle plugin then executes this exact trace natively on Linux via `perf stat`, validating that the physical hardware trace does not exceed the mathematical ceilings generated by the compiler.
+
+## The Unified Data Pipeline
 
 - **Autumn Network Engine** pulls raw bytes from OS sockets (or local mocks) without manifesting object graphs.
 - **Config & Registry** parses the incoming payloads into pre-allocated, flat integer/byte arrays. 
 - **Epoch State Engine** tracks slot mutations and emits a single coalesced wake-up pulse, dropping all intermediate state tearing.
-- **Native UI (Compose / SwiftUI)** attaches to the hardware wire, waking up exactly once per batch frame to read directly from the underlying physical registries.
+- **Display / Output** attaches to the hardware wire, waking up exactly once per batch frame to read directly from the underlying physical registries.
 
-Because the backend is treated as an external commodity out-of-bounds, Autumn does not care *where* the bytes come from—it only guarantees they are rendered instantly, deterministically, and safely once they cross the network layer.
+Because the backend is treated as an external commodity out-of-bounds, Autumn does not care *where* the bytes come from—it only guarantees they are processed instantly, deterministically, and safely once they cross the boundary layer.
 
 ## Key features
 
 - **Array-based, pointer-free data structures**: all internal data — configuration tables, resource registries, list items, and form state — is stored in flat pre-allocated arrays accessed by integer index and byte offset. There are no object graphs, no pointer chains, and no GC-visible references between data items.
 - **Deterministic Game Engines & ECS (Data-Oriented Design)**: High-performance game engines require strict 16ms/8ms frame budgets to guarantee 60/120fps physics and rendering. Autumn's SoA (Structure of Arrays) layout is natively an Entity Component System (ECS). By wrapping a game's physics or render step in an `@CycleBudget`, the compiler mathematically guarantees a locked frame rate across Android, iOS, and WebAssembly, absolutely impervious to GC stutters.
-- **Circuit-Based Reactivity**: replaces traditional flow observers with a single lock-free `IntArray` state engine, ensuring the UI natively coalesces pulses and never chokes on backpressure.
+- **FSM-Based Reactivity**: replaces traditional flow observers with a single lock-free `IntArray` state engine, ensuring the FSM natively coalesces pulses and never chokes on backpressure.
 - **K2 Compiler Enforcement**: physically rewrites the syntax tree at compile-time to enforce hardware partition limits and inject memory boundaries via `@InjectBudget`.
-- **Native UI rendering**: keeps rendering close to each platform while executing a fully shared, static execution pipeline.
+- **Clock-Aware UI rendering**: keeps rendering close to each platform while executing a fully shared, static execution pipeline.
 
 n### Kotlin K2 Compiler Integration (A Hardware Description Language for the JVM/Native)
 Autumn effectively acts as a hardware description language that compiles natively to the JVM and LLVM. The Autumn compiler plugin intercepts the Kotlin Abstract Syntax Tree (AST) to generate and resolve data layouts that standard Kotlin runtimes cannot mathematically support. By simply placing declarative annotations (`@BoundaryChannel`, `@Pipelined`), developers write what looks like standard Kotlin business logic.
@@ -94,10 +110,16 @@ This topology uses the structural annotations (`@BoundaryChannel`, `@ColdChannel
     +-----------------------+
     | NIC / AF_XDP / Socket |
     +-----------+-----------+
-                | @BoundaryChannel (Wait-free SPSC Ring Buffer)
+                | @BoundaryChannel (Wait-free Ring Buffer FSM Device)
                 v
     +-----------------------+
-    | Autumn Arbiter (FSM)  | <-- @Speculative Burst Loop (synthesized tick routing)
+    | Autumn HashRouter     | <-- Shards workload sequentially by Session/Symbol
+    +-----------+-----------+
+                |
+                | SPSC Lock-Free Queue
+                v
+    +-----------------------+
+    | Autumn Arbiter (FSM)  | <-- Core-Affinity Pinned Business Logic
     +-----+-----------+-----+
           |           |
           |           | @ColdChannel (Zero-copy multicasting fan-out)
@@ -120,7 +142,7 @@ This topology treats the UI as an external physical display attached to an embed
     +-----------------------+
     | Network Sockets (Raw) |
     +-----------+-----------+
-                | @BoundaryChannel
+                | @BoundaryChannel (FSM Device)
                 v
     +-----------------------+       +-----------------------+
     | Autumn Config Parser  | ----> | String / Byte Registry|
@@ -129,7 +151,7 @@ This topology treats the UI as an external physical display attached to an embed
                 | 
                 v
     +-----------------------+
-    | Epoch State Engine    | <-- Coalesces via @Speculative UI frame boundaries
+    | Epoch State Engine    | <-- Coalesces logical state ticks
     +-----------+-----------+
                 |
                 v
@@ -189,6 +211,7 @@ Architectural decisions live in [`docs/adr/`](docs/adr) and capture the initial 
 - ADR-0026 — Automated Real-Time Audit Certification
 - ADR-0027 — Multi-Target Assembly Profiling and IDE Drill-Down
 - ADR-0028 — Hybrid WCET Certification, CFG Extraction, and Jitter Profiling
+- ADR-0029 — Universal FSM Device Boundary via BoundaryChannel
 
 ## Tooling Roadmap
 
@@ -198,7 +221,7 @@ Autumn's goal is to bridge the gap between high-level application development an
 Because the `autumn-compiler-plugin` performs massive amounts of *A Priori* static analysis (calculating L1 cache bounds, physical memory padding, and cycle costs), we plan to export this exact mathematical layout via a standard telemetry contract (e.g., `autumn-topology.json`).
 
 A companion IntelliJ plugin will map this data back onto the source code, creating a real-time **Hardware Schematic** inside the editor:
-- **Visual Circuit Graphs:** Ctrl+Click an `@BoundaryChannel` and open a node-based visualizer showing the exact flow of data through your FSM ticks, bypassing typical standard "Find Usages" clutter.
+- **Visual Topology Graphs:** Ctrl+Click an `@BoundaryChannel` and open a node-based visualizer showing the exact flow of data through your FSM ticks, bypassing typical standard "Find Usages" clutter.
 - **Inline Hardware Telemetry:** See gray `[24 bytes | 3% L1 Cache]` CodeLens hints sitting directly above your `@Pipelined` structs. 
 - **Cycle Costing Feedback:** Hover over a `tick()` handler and see exactly how many ALU CPU cycles the compiler mathematically predicts the frame will cost. 
 - **Pre-emptive Squiggles:** Automatically red-underline a new class property if it crosses the strictly enforced `@ThreadCacheBudget` capacity boundary *before* you run the gradle build.
@@ -255,7 +278,7 @@ fun tickServer() {
 Autumn bypasses standard object allocation by replacing DTO flows with an emulated hardware interrupt wire. Here is how you bind Autumn to a Compose UI:
 
 ```kotlin
-// 1. The Circuit Binder
+// 1. The Output Binder
 // This adapts Autumn's memory matrices to platform-specific graphics.
 class MyScreenBinder(
     stateEngine: EpochStateEngine,

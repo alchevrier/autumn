@@ -125,10 +125,10 @@ class TopologySynthesisTransformer(
                 else -> "RegisterChannel"
             }
             
-            val shardedArgument = annot?.getValueArgument(2) as? IrConst
+            val shardedArgument = if (annot != null && annot.valueArgumentsCount > 2) annot.getValueArgument(2) as? IrConst else null
             val sharded = (shardedArgument?.value as? Int) ?: 1
             
-            val shardKeyArgument = annot?.getValueArgument(3) as? IrConst
+            val shardKeyArgument = if (annot != null && annot.valueArgumentsCount > 3) annot.getValueArgument(3) as? IrConst else null
             val shardKey = (shardKeyArgument?.value as? String) ?: ""
             
             val fileEntry = declaration.file.fileEntry

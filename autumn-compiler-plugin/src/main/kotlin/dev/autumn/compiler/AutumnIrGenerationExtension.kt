@@ -63,6 +63,7 @@ class AutumnIrGenerationExtension(
 
         // 5. Synthesize continuous Dataflow topologies (Network, Cold, Register Channels) into a unified Arbiter schedule.
         val topologyTransformer = TopologySynthesisTransformer(pluginContext, messageCollector)
+        topologyTransformer.preScan(moduleFragment)
         moduleFragment.transform(topologyTransformer, null)
         
         

@@ -42,6 +42,58 @@ class TopologySynthesisTransformer(
 
     private val discoveredChannels = mutableListOf<ChannelTopologyInfo>()
 
+    fun preScan(moduleFragment: org.jetbrains.kotlin.ir.declarations.IrModuleFragment) {
+        moduleFragment.accept(object : org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid {
+            override fun visitElement(element: org.jetbrains.kotlin.ir.IrElement) {
+                element.acceptChildren(this, null)
+            }
+            override fun visitProperty(declaration: IrProperty) {
+                val isNet = declaration.hasAnnotation(BOUNDARY_CHANNEL_FQ)
+                val isCold = declaration.hasAnnotation(COLD_CHANNEL_FQ)
+                val isSession = declaration.hasAnnotation(SESSION_CHANNEL_FQ)
+                val isReg = declaration.hasAnnotation(REGISTER_CHANNEL_FQ) || declaration.hasAnnotation(SESSION_CHANNEL_FQ)
+
+                if (isNet || isCold || isSession || isReg) {
+                    val annot = when {
+                        isNet -> declaration.getAnnotation(BOUNDARY_CHANNEL_FQ)
+                        isCold -> declaration.getAnnotation(COLD_CHANNEL_FQ)
+                        isSession -> declaration.getAnnotation(SESSION_CHANNEL_FQ)
+                        else -> declaration.getAnnotation(REGISTER_CHANNEL_FQ)
+                    }
+
+                    val capArgument = annot?.getValueArgument(0) as? IrConst
+                    val capacity = (capArgument?.value as? Int) ?: 1024
+
+                    val weightArgument = annot?.getValueArgument(1) as? IrConst
+                    val weight = (weightArgument?.value as? Int) ?: when {
+                        isNet -> 100
+                        isCold -> 10
+                        else -> 50
+                    }
+
+                    val typeString = when {
+                        isNet -> "BoundaryChannel"
+                        isCold -> "ColdChannel"
+                        isSession -> "SessionChannel"
+                        else -> "RegisterChannel"
+                    }
+
+                    val sharded = 1
+
+                    discoveredChannels.add(ChannelTopologyInfo(
+                        name = declaration.name.asString(),
+                        weight = weight,
+                        capacity = capacity,
+                        type = typeString,
+                        sharded = sharded,
+                        property = declaration
+                    ))
+                }
+                super.visitProperty(declaration)
+            }
+        }, null)
+    }
+
     override fun visitPropertyNew(declaration: IrProperty): IrStatement {
         val isNet = declaration.hasAnnotation(BOUNDARY_CHANNEL_FQ)
         val isCold = declaration.hasAnnotation(COLD_CHANNEL_FQ)
@@ -59,34 +111,16 @@ class TopologySynthesisTransformer(
             val capArgument = annot?.getValueArgument(0) as? IrConst
             val capacity = (capArgument?.value as? Int) ?: 1024
 
-            val weightArgument = annot?.getValueArgument(1) as? IrConst
-            val weight = (weightArgument?.value as? Int) ?: when {
-                isNet -> 100
-                isCold -> 10
-                else -> 50
-            }
-
             val typeString = when {
                 isNet -> "BoundaryChannel"
                 isCold -> "ColdChannel"
                 isSession -> "SessionChannel"
                 else -> "RegisterChannel"
             }
-
-            val sharded = 1
             
             val fileEntry = declaration.file.fileEntry
             val srcFile = fileEntry.name
             val srcLine = fileEntry.getLineNumber(declaration.startOffset)
-            
-            discoveredChannels.add(ChannelTopologyInfo(
-                name = declaration.name.asString(),
-                weight = weight,
-                capacity = capacity,
-                type = typeString,
-                sharded = sharded,
-                property = declaration
-            ))
             
             // --- INJECT JSON EXPORT FOR CHANNELS ---
             TopologyExportSerializer.components.add(

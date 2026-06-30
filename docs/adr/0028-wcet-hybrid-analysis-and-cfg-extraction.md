@@ -33,3 +33,11 @@ Because fully modeling a Zen 4 or Skylake pipeline is mathematically prohibitive
 * **Positive:** Developers receive tight, realistic WCET limits instead of wildly pessimistic summations.
 * **Positive:** Bypasses the need for a multi-million-dollar internal hardware simulation model, relying instead on physical hardware measurements orchestrated safely via standard pipeline tools (`perf`).
 * **Negative:** Achieving a certified build will require running the test suite on the specific target hardware (e.g., you cannot sign an official x86_64 performance certificate on an Apple M3 MacBook), though compilation and IDE feedback remain strictly cross-platform.
+
+## Limitations & Future Work
+While the hybrid compiler-driven approach scales brilliantly for general high-performance code, formal aerospace or medical-grade auditing will point out the following ongoing execution gaps:
+
+1. **The "Test Vector" Blind Spot:** Empirical `perf` tracing only measures what the dynamic benchmark data feeds it. If our benchmark inputs only trigger the "happy path", the trace misses the worst-case branch. Future iterations of the certifier must generate "Maximum Coverage Test Vectors" to forcefully visit every CFG branch.
+2. **The OS Jitter Trap:** Running `perf` on standard Linux inherently measures OS noise (network interrupts, scheduler ticks). True verification must occur on `PREEMPT_RT` kernels or fully isolated CPUs (via `isolcpus` and `nohz_full`).
+3. **Hardware Cache Bias (Warm vs. Cold):** Benchmarks naturally warm the L1/L2 caches and prime the branch predictor, producing artificially low cycle counts (Average-Case execution rather than Worst-Case). An auditor would demand `clflush` instructions between passes to prove the absolute maximum cold-cache latency.
+4. **Mathematical Solver Maturation:** The current system isolates branches, but the Integer Linear Programming (ILP) mathematical matrix solver to strictly define path exclusivity is not yet implemented. Native path summation is currently acting as a naive upper bound.

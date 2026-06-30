@@ -8,7 +8,7 @@ package dev.autumn.annotations
  * and this annotation is missing, the autumn-compiler-plugin will throw a fatal error
  * during the WCET static analysis pass.
  */
-@Target(AnnotationTarget.EXPRESSION, AnnotationTarget.STATEMENT)
+@Target(AnnotationTarget.EXPRESSION)
 @Retention(AnnotationRetention.SOURCE)
 annotation class MaxIterations(
     val limit: Int

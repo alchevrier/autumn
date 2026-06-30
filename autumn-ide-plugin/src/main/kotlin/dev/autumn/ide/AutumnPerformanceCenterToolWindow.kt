@@ -281,9 +281,14 @@ fun ComponentCard(comp: TopologyComponent, selectedTarget: String, project: Proj
                         lines.forEach { line ->
                             val parts = line.split("|")
                             if (parts.size >= 3) {
+                                val opName = parts[1]
+                                val isBranch = opName.contains("IFEQ") || opName.contains("jmp") || opName.contains("b.eq") || opName.contains("br_if")
+                                val rowColor = if (isBranch) Color(0xFFDAA520) else Color(0xFF98FB98)
+                                val branchPrefix = if (isBranch) "⑂ " else ""
+                                
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Text(parts[0], fontFamily = FontFamily.Monospace, color = Color(0xFFA9A9A9), modifier = Modifier.weight(1f))
-                                    Text(parts[1], fontFamily = FontFamily.Monospace, color = Color(0xFF98FB98), modifier = Modifier.weight(1f))
+                                    Text("$branchPrefix$opName", fontFamily = FontFamily.Monospace, color = rowColor, modifier = Modifier.weight(1f))
                                     Text("${parts[2]} cyc", fontFamily = FontFamily.Monospace, color = Color(0xFFFF6347))
                                 }
                             }

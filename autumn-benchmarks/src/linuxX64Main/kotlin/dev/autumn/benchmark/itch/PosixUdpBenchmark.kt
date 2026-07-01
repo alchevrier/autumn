@@ -8,7 +8,7 @@ import platform.posix.*
 
 @LongLived
 @BoundaryChannel(capacity = 2097152, weight = 100, sharded = 1)
-@UdpGateway(port = 8000)
+@UdpGateway(port = 8000, host = "127.0.0.1")
 val cloudNetworkFrames = AutumnChannel<NetworkFrameFlyweight>(2097152)
 
 @LongLived
@@ -66,8 +66,7 @@ fun pollUdpGateway() {
  * The business logic doesn't care. It just reads from `cloudNetworkFrames`.
  */
 @OptIn(ExperimentalForeignApi::class)
-fun bootPosixUdpServer(port: Int) {
-    udpSockFd = dev.autumn.udp.UdpGatewayDriver.bindNonBlockingSocket(port)
-    println("[Autumn Cloud-Tier] Listening natively on UDP port $port. Ready for payload ingress.")
+fun bootPosixUdpServer(port: Int, host: String = "127.0.0.1") {
+    udpSockFd = dev.autumn.udp.UdpGatewayDriver.bindNonBlockingSocket(port, host)
     // Note: The AutumnScheduler will automatically invoke pollUdpGateway() via @Observe
 }

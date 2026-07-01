@@ -243,7 +243,47 @@ fun bootstrapAutumnPipeline() {
 var classicInstance: ClassicOrderBook? = null
 
 @LongLived
-fun main() {
+fun main(args: Array<String>) {
+    if (args.contains("--udp-cloud")) {
+        println("--- Booting Managed JVM POSIX UDP Topology ---")
+        
+        dev.autumn.memory.AutumnMemoryBank.allocate(16777216 * 20)
+        
+        dev.autumn.benchmark.itch.jvmCloudUdpMetrics.startRecording()
+        dev.autumn.benchmark.itch.bootJvmUdpServer(8000, "127.0.0.1")
+        
+        // Spawn sender in a background thread to emulate cloud ingress
+        java.lang.Thread {
+            Thread.sleep(1000) // wait for server to bind
+            val sendChannel = java.nio.channels.DatagramChannel.open()
+            val serverAddress = java.net.InetSocketAddress("127.0.0.1", 8000)
+            
+            val mockPayload = java.nio.ByteBuffer.allocateDirect(36)
+            
+            println("🚀 [MOCK JVM CLIENT] Blasting 2,000,000 UDP frames via java.nio...")
+            for (i in 0 until 2_000_000) {
+                mockPayload.clear()
+                // Fill dummy bytes to simulate 36 byte frame
+                for (j in 0 until 36) mockPayload.put(0.toByte())
+                mockPayload.flip()
+                sendChannel.send(mockPayload, serverAddress)
+            }
+            sendChannel.close()
+            println("🚀 [MOCK JVM CLIENT] Finished sending.")
+        }.start()
+        
+        // Block main thread to poll UDP natively
+        while (true) {
+            dev.autumn.benchmark.itch.pollJvmUdpGateway()
+            if (dev.autumn.benchmark.itch.jvmUdpChannel == null) break
+        }
+        
+        println("[Autumn Observatory] JVM P50 Latency : ${dev.autumn.benchmark.itch.jvmCloudUdpMetrics.calculatePercentile(50.0)} ns")
+        println("[Autumn Observatory] JVM P99 Latency : ${dev.autumn.benchmark.itch.jvmCloudUdpMetrics.calculatePercentile(99.0)} ns")
+        println("[Autumn Observatory] JVM P99.99 Latency: ${dev.autumn.benchmark.itch.jvmCloudUdpMetrics.calculatePercentile(99.99)} ns")
+        return
+    }
+
     // Correctness verified online to proudly prove K2 capabilities
     val classic = ClassicOrderBook()
     classicInstance = classic

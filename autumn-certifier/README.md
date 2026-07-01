@@ -10,7 +10,7 @@ The `autumn-certifier` Gradle plugin reads this topology and runs native Linux `
 
 ```mermaid
 flowchart TD
-    A[Idiomatic Kotlin Code<br/>@CycleBudget(800)] --> B(K2 Compiler Plugin)
+    A["Idiomatic Kotlin Code<br/>@CycleBudget(800)"] --> B(K2 Compiler Plugin)
     
     subgraph Compile-Time
     B -->|Static Analysis| C[autumn-topology.json]

@@ -51,10 +51,13 @@ class PipelinedSoATransformer(
     private val REGISTER_CHANNEL_FQ_NAME = FqName("dev.autumn.annotations.RegisterChannel")
     private val COLD_CHANNEL_FQ_NAME = FqName("dev.autumn.annotations.ColdChannel")
     private val SESSION_CHANNEL_FQ_NAME = FqName("dev.autumn.annotations.SessionChannel")
+    private val IPC_GATEWAY_FQ_NAME = FqName("dev.autumn.annotations.IpcGateway")
 
     private val propertyLocalSoAByteOffsets = mutableMapOf<String, MutableMap<String, Int>>()
     private val propertyByteSizes = mutableMapOf<String, MutableMap<String, Int>>()
     private val channelIndexOffsets = mutableMapOf<String, Int>()
+    private val ipcConfigs = mutableMapOf<String, String>() // Struct Name to access "WRITE"/"READ"
+
 
     fun buildMemoryMap(moduleFragment: IrModuleFragment) {
         val pipelinedClasses = mutableMapOf<String, IrClass>()
@@ -89,6 +92,8 @@ class PipelinedSoATransformer(
                         isSession -> SESSION_CHANNEL_FQ_NAME
                         else -> COLD_CHANNEL_FQ_NAME
                     }
+                    val ipcAnnot = declaration.getAnnotation(IPC_GATEWAY_FQ_NAME)
+                    val isIpc = ipcAnnot != null
                     
                     val annot = declaration.getAnnotation(targetAnnotation)
                     val capArgument = if (isNet || isReg || isSession) annot?.getValueArgument(0) as? IrConst else null
@@ -105,14 +110,23 @@ class PipelinedSoATransformer(
                     if (boundStructClass != null) {
                         if (boundStructClass.hasAnnotation(PIPELINED_FQ_NAME)) {
                             val boundName = boundStructClass.name.asString()
-                            val currentTotal = structTotalCapacities[boundName] ?: 0
-                            
-                            channelIndexOffsets[declaration.name.asString()] = currentTotal
-                            structTotalCapacities[boundName] = currentTotal + channelCapacity
+                            if (isIpc) {
+                                if (targetAnnotation != COLD_CHANNEL_FQ_NAME) {
+                                    messageCollector.report(CompilerMessageSeverity.ERROR, "IpcGateway must exclusively decorate @ColdChannel elements for Temperature-Bounded I/O constraint DAGs.")
+                                }
+                                val accessVal = (ipcAnnot?.getValueArgument(1) as? org.jetbrains.kotlin.ir.expressions.IrConst)?.value as? String ?: "WRITE"
+                                ipcConfigs[boundName] = accessVal
+                                channelIndexOffsets[declaration.name.asString()] = 0
+                                structTotalCapacities[boundName] = channelCapacity
+                            } else {
+                                val currentTotal = structTotalCapacities[boundName] ?: 0
+                                channelIndexOffsets[declaration.name.asString()] = currentTotal
+                                structTotalCapacities[boundName] = currentTotal + channelCapacity
+                            }
                             
                             messageCollector.report(
                                 CompilerMessageSeverity.INFO,
-                                "[Autumn HLS] Assigned Global Index Bounds: Channel '${declaration.name.asString()}' gets indices $currentTotal..${currentTotal + channelCapacity - 1} from Pool $boundName"
+                                "[Autumn HLS] Assigned Global Index Bounds: Channel '${declaration.name.asString()}' mapped to Pool $boundName"
                             )
                         } else {
                             messageCollector.report(
@@ -131,10 +145,14 @@ class PipelinedSoATransformer(
         
         for ((className, totalCapacity) in structTotalCapacities) {
             val boundStructClass = pipelinedClasses[className] ?: continue
+            val isIpcStruct = ipcConfigs.containsKey(className)
             
             var totalStructBytes = 0
             val localSoAOffsets = mutableMapOf<String, Int>()
             val byteSizes = mutableMapOf<String, Int>()
+            
+            // IPC starts at 0 for its dedicated POSIX memory block
+            var ipcCursor = 0
             
             for (property in boundStructClass.properties.toList()) {
                 val propertyName = property.name.asString()
@@ -150,11 +168,19 @@ class PipelinedSoATransformer(
                 }
                 
                 if (byteSize > 0) {
-                    localSoAOffsets[propertyName] = currentGlobalPartitionOffset
-                    byteSizes[propertyName] = byteSize
-                    totalStructBytes += byteSize
-                    println("LAYOUT_OUTPUT: $className.$propertyName offset=$currentGlobalPartitionOffset size=$byteSize")
-                    currentGlobalPartitionOffset += (byteSize * totalCapacity) 
+                    if (isIpcStruct) {
+                        localSoAOffsets[propertyName] = ipcCursor
+                        byteSizes[propertyName] = byteSize
+                        totalStructBytes += byteSize
+                        println("LAYOUT_OUTPUT [IPC]: $className.$propertyName offset=$ipcCursor size=$byteSize")
+                        ipcCursor += (byteSize * totalCapacity)
+                    } else {
+                        localSoAOffsets[propertyName] = currentGlobalPartitionOffset
+                        byteSizes[propertyName] = byteSize
+                        totalStructBytes += byteSize
+                        println("LAYOUT_OUTPUT: $className.$propertyName offset=$currentGlobalPartitionOffset size=$byteSize")
+                        currentGlobalPartitionOffset += (byteSize * totalCapacity) 
+                    }
                 }
             }
             
@@ -175,7 +201,9 @@ class PipelinedSoATransformer(
             }
             if (alignedSoABytes < 4096) alignedSoABytes = 4096
 
-            totalAllocatedBytes[0] += alignedSoABytes
+            if (!isIpcStruct) {
+                totalAllocatedBytes[0] += alignedSoABytes
+            }
             
             messageCollector.report(
                 CompilerMessageSeverity.INFO,
@@ -336,7 +364,20 @@ if (targetClassName == null) return super.visitCall(expression)
                     else -> return super.visitCall(expression)
                 }
 
-                val memoryBankClass = pluginContext.referenceClass(ClassId.topLevel(FqName("dev.autumn.memory.AutumnMemoryBank")))?.owner ?: return super.visitCall(expression)
+                val isIpcStruct = ipcConfigs.containsKey(parentClass.name.asString())
+                
+                val memoryBankClass = if (isIpcStruct) {
+                    pluginContext.referenceClass(org.jetbrains.kotlin.name.ClassId.topLevel(FqName("dev.autumn.ipc.MmapGatewayDriver")))?.owner ?: return super.visitCall(expression)
+                } else {
+                    pluginContext.referenceClass(org.jetbrains.kotlin.name.ClassId.topLevel(FqName("dev.autumn.memory.AutumnMemoryBank")))?.owner ?: return super.visitCall(expression)
+                }
+
+                if (isIpcStruct) {
+                    val access = ipcConfigs[parentClass.name.asString()]
+                    if (isSetter && access == "READ") {
+                        messageCollector.report(org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.ERROR, "Cannot mutate a structured field on a READ-only explicitly uni-directional IpcGateway bounds.")
+                    }
+                }
                 
                 val intClass = pluginContext.irBuiltIns.intClass.owner
                 val intTimes = intClass.functions.find { it.name.asString() == "times" && it.valueParameters.firstOrNull()?.type == pluginContext.irBuiltIns.intType }?.symbol ?: return super.visitCall(expression)

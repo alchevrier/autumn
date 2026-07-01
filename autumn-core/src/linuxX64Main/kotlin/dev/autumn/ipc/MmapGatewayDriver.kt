@@ -7,7 +7,32 @@ import platform.posix.*
  * Extreme low-latency driver binding `@IpcGateway` annotations natively to physical RAM.
  * Proves ADR-0031.
  */
+
 object MmapGatewayDriver {
+
+    // Internal tracker for compiler-injected pointers to avoid lookup overhead
+    // Size 1 ensures single-file PoC, easily expandable over mapping registers natively
+    @OptIn(ExperimentalForeignApi::class)
+    var activeIpcPointer: CPointer<ByteVar>? = null
+
+    @OptIn(ExperimentalForeignApi::class)
+    fun getByte(offset: Int): Byte = activeIpcPointer!![offset]
+    
+    @OptIn(ExperimentalForeignApi::class)
+    fun setByte(offset: Int, value: Byte) { activeIpcPointer!![offset] = value }
+    
+    @OptIn(ExperimentalForeignApi::class)
+    fun getInt(offset: Int): Int = (activeIpcPointer!! + offset)!!.reinterpret<IntVar>()[0]
+    
+    @OptIn(ExperimentalForeignApi::class)
+    fun setInt(offset: Int, value: Int) { (activeIpcPointer!! + offset)!!.reinterpret<IntVar>()[0] = value }
+
+    @OptIn(ExperimentalForeignApi::class)
+    fun getLong(offset: Int): Long = (activeIpcPointer!! + offset)!!.reinterpret<LongVar>()[0]
+    
+    @OptIn(ExperimentalForeignApi::class)
+    fun setLong(offset: Int, value: Long) { (activeIpcPointer!! + offset)!!.reinterpret<LongVar>()[0] = value }
+
 
     @OptIn(ExperimentalForeignApi::class)
     fun mapSharedMemory(filePath: String, isWriter: Boolean, sizeBytes: Long): CPointer<ByteVar>? {
@@ -41,6 +66,8 @@ object MmapGatewayDriver {
         // Close the fd immediately - the RAM is natively mapped and doesn't need file overhead!
         close(fd)
         
-        return ptr?.reinterpret()
+        val finalPtr = ptr?.reinterpret<ByteVar>()
+        activeIpcPointer = finalPtr
+        return finalPtr
     }
 }

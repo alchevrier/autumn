@@ -4,6 +4,11 @@ import dev.autumn.annotations.*
 import kotlinx.cinterop.*
 import platform.posix.*
 
+@LongLived
+@ColdChannel(capacity = 2097152, weight = 1, sharded = 1)
+@IpcGateway(file = "/dev/shm/autumn-market-data", access = "READ")
+val ipcInboundFrames = dev.autumn.channel.AutumnChannel<MmapFrame>(2097152)
+
 // Global reference maintained purely for the mock execution
 @OptIn(ExperimentalForeignApi::class)
 var mmapReaderPointer: CPointer<ByteVar>? = null
@@ -29,16 +34,13 @@ fun runReaderColdPathBenchmark() {
     
     // We arbitrarily simulate spinning slower to prove backpressure does not exist
     while (messagesLogged < 2_000_000L) {
-        val readOffset = (messagesLogged % 2097152L) * 9L
-        // Verify if a struct has been flushed to this pointer location
-        val msgType = ptr[readOffset]
+        val readOffset = (messagesLogged % 2097152L).toInt() * 9
+        val frame = MmapFrame(readOffset) // The compiler natively assigns this instance directly to the Mmap Gateway
+        
+        val msgType = frame.msgType
         
         if (msgType == 65.toByte()) { // 'A' written by Writer
-            var orderId = 0L
-            for (i in 0 until 8) {
-                // Reconstruct exact bytes the writer mapped sequentially
-                orderId = orderId or ((ptr[readOffset + 1 + i].toLong() and 0xFF) shl (i * 8))
-            }
+            val orderId = frame.orderId
             messagesLogged++
             
             if (messagesLogged % 1_000_000L == 0L) {
@@ -50,5 +52,5 @@ fun runReaderColdPathBenchmark() {
             sched_yield()
         }
     }
-    println("✅ [Autumn Mmap Logger] Terminating. Passively logged 5,000,000 FSM multicasts via hardware pointer.")
+    println("✅ [Autumn Mmap Logger] Terminating. Passively logged 2,000,000 FSM multicasts via hardware pointer.")
 }

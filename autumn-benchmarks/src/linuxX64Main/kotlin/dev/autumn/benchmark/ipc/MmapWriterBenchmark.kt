@@ -8,18 +8,14 @@ import platform.posix.*
 
 // A declarative FSM topology boundary mapped completely into cross-process Shared Memory
 @LongLived
-@BoundaryChannel(capacity = 2097152, weight = 100, sharded = 1)
+@ColdChannel(capacity = 2097152, weight = 1, sharded = 1)
 @IpcGateway(file = "/dev/shm/autumn-market-data", access = "WRITE")
 val ipcOutboundFrames = AutumnChannel<MmapFrame>(2097152)
 
 @Pipelined
 value class MmapFrame(val index: Int) {
-    inline fun writeByte(offset: Int, value: Byte) {
-        AutumnMemoryBank.setByte(index + offset, value)
-    }
-    inline fun writeLong(offset: Int, value: Long) {
-        AutumnMemoryBank.setLong(index + offset, value)
-    }
+    var msgType: Byte get() = 0; set(value) {}
+    var orderId: Long get() = 0L; set(value) {}
 }
 
 // Global reference maintained purely for the mock execution
@@ -52,15 +48,10 @@ fun runWriterHotPathBenchmark() {
             val frameIdx = partitionIdx * 9
             val frame = MmapFrame(frameIdx)
             // Payload Offset Map: (0) MsgType, (1-8) OrderId
-            frame.writeByte(0, 65.toByte()) // 'A'
-            frame.writeLong(1, messagesSent)
+            frame.msgType = 65.toByte()
+            frame.orderId = messagesSent
             
-            // In a K2 compiled build, `AutumnMemoryBank.setByte` naturally overrides to `ptr[frameIdx] = value` natively via inline resolution.
-            // For the sake of this explicit isolated benchmark, we flush the memory bank offsets directly to the CPointer.
-            for (i in 0 until 9) {
-                ptr[frameIdx + i] = AutumnMemoryBank.getByte(frameIdx + i)
-            }
-            
+                        
             ipcOutboundFrames.commitNextPartition(0)
             messagesSent++
         } else {

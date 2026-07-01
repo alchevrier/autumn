@@ -30,6 +30,8 @@ data class TopologyComponent(
     val name: String,
     val channelType: String = "",
     val capacity: Int = 0,
+    val sharded: Int = 1,
+    val shardKey: String = "",
     val cycles: Int = 0,
     val portPressure: String = "",
     val target: String = "",
@@ -257,8 +259,12 @@ fun ComponentCard(comp: TopologyComponent, selectedTarget: String, project: Proj
                 if (comp.cycles > 0) Text("Cycles: ${comp.cycles}", style = MaterialTheme.typography.body2)
                 if (comp.portPressure.isNotEmpty()) Text("Pressure: ${comp.portPressure}", style = MaterialTheme.typography.body2)
                 if (comp.capacity > 0) Text("Capacity: ${comp.capacity}", style = MaterialTheme.typography.body2)
+                if (comp.sharded > 1) {
+                    Text("Cores: ${comp.sharded}x", style = MaterialTheme.typography.body2, color = Color(0xFFE066FF))
+                }
             }
             if (comp.target.isNotEmpty()) Text("Routes To: ${comp.target}", style = MaterialTheme.typography.body2, color = Color.Yellow)
+            if (comp.shardKey.isNotEmpty()) Text("Partition Key: ${comp.shardKey}", style = MaterialTheme.typography.body2, color = Color(0xFFE066FF))
             
             if (expanded && comp.type == "Handler") {
                 Spacer(modifier = Modifier.height(8.dp))

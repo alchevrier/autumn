@@ -64,3 +64,9 @@ Autumn overrides traditional object orientation. When the K2 compiler encounters
 ### 3. Static Constraint Verification
 - **Allocation Enforcement:** A custom K2 IR visitor scans all scopes marked mathematically as `@LongLived`. If it detects any heap-allocated objects being spawned or closures instantiated (instead of basic array mutations), it will abort the build.
 - **Budget Injection (`BudgetInjectionTransformer`):** It sweeps the IR tree for configurations like `@NetworkConcurrencyBudget` or `@InjectBudget` and evaluates them into static `IrConst` integer literals. Dynamic concurrency layouts literally disappear from the final bytecode, replaced by statically sized `IntArray` initializations matching strict `ADR-0010` architectural capacities.
+
+### 4. Zero-Copy IPC Multi-Process Memory Overrides (`@IpcGateway`)
+The K2 Compiler completely orchestrates POSIX `/dev/shm` multicasting without generating runtime conditional logic. When the compiler evaluates a `@ColdChannel` specifically annotated with `@IpcGateway`, it natively segregates that topology node from the internal compute bank layout:
+- The allocated bounds are isolated geometrically and entirely excluded from the holistic monolithic `AutumnMemoryBank.allocate()` physical block.
+- Instead of bridging structure `index` math backwards to the internal memory, the K2 `PipelinedSoATransformer` dynamically overwrites the property `.get()` and `.set()` bindings to hook securely against Native `MmapGatewayDriver` offsets identically bridged across disjoint processes globally without a network loop.
+- Modifying values natively bounds exact memory segments flawlessly. The hardware is mathematically ignorant it bridged standard containers on identical unbacked topologies natively.

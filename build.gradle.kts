@@ -7,7 +7,7 @@ plugins {
 
 allprojects {
     group = "io.github.alchevrier"
-    version = "1.1.0"
+    version = "1.2.0"
 
 }
 
@@ -24,7 +24,7 @@ subprojects {
             signAllPublications()
         }
         
-        coordinates("io.github.alchevrier", project.name, "1.0.2")
+        coordinates("io.github.alchevrier", project.name, "1.2.0")
 
         pom {
             name.set(project.name)

@@ -2,18 +2,18 @@
 
 ![CI](https://github.com/alchevrier/autumn/actions/workflows/ci.yml/badge.svg)
 ![Maven Central](https://img.shields.io/maven-central/v/io.github.alchevrier/autumn-core.svg)
-![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)
 
 **Mathematical Runtime Certification via Structural Static Analysis for Kotlin Multiplatform.**
 
 Autumn aims to be an aerospace-grade, high-frequency execution framework that introduces **Clock-Aware Programming** to commodity CPUs. By treating memory as a pure static topology and enforcing mathematical cycle limits at the compiler level, Autumn's goal is to allow standard CI/CD pipelines to cryptographically certify software execution bounds.
 
-## What's New in v1.1.0
+## What's New in v1.2.0
 
-Autumn v1.1.0 massive leaps forward in hardware observability and LLVM execution speeds:
-- ⚡ **Sub-40ns Execution via Kotlin/Native:** By bypassing the JVM entirely and unrolling topologies through LLVM (`linuxX64`), Autumn easily achieves a median cross-thread pipeline latency of **~37 nanoseconds**, with a completely flat **<120 ns P99.99**. No Garbage Collection, no OS thread locks, just pure instruction-level parallelism.
-- 🛑 **Compile-Time Hardware Constraints (`@CycleBudget`):** IR evaluation natively performed at compile time. If your branching logic or allocations exceed the physical cycle limit of a CPU, *the compiler breaks your build*.
-- 🛠 **The Autumn IDE Performance Center:** A native IntelliJ IDEA Plugin using JetBrains Compose. It visually graphs the pipeline topology and adds live UI gutters (`⚡ 37 / 60 Cycles | Port 1 ALU Pressure`) straight to your code as you type, entirely fueled by JSON telemetry emitted by the K2 compiler.
+Autumn v1.2.0 natively scales the L1-cache bounds into **Kubernetes-native Zero-Copy Mmap Multicasting** across perfectly strict unidirectional boundaries:
+- ⚡ **Strictly Unidirectional Temperature Bounding:** I/O constraints are now mathematically bound to **Temperature Directionality** (ADR-0033). Ingress is **Hot** (`@BoundaryChannel`) and pinned tightly to L1 hardware schedulers. Egress is explicitly **Cold** (`@ColdChannel`), physically segregating external network backpressure away from the pure computation loop dynamically without thread-locking loops.
+- 🛑 **POSIX IPC Native K2 Automation:** Any unidirectional `@ColdChannel` decorated with an `@IpcGateway` natively intercepts memory property getters/setters during AST evaluations in the K2 Compiler Plugin. Applications natively bind values to explicit C-interop `/dev/shm` POSIX pointers dynamically. This achieves flawless multi-process execution via identical Kubernetes `emptyDirs` mapped deterministically to structural integer bounds without a single allocation or TCP loop.
+- 🛠 **Sub-40ns Execution via Kotlin/Native:** By bypassing the JVM entirely and unrolling topologies through LLVM (`linuxX64`), Autumn easily achieves a median cross-thread pipeline latency of **~37 nanoseconds**, with a completely flat **<120 ns P99.99**. No Garbage Collection, no OS thread locks, just pure instruction-level parallelism.
 
 ## What is Clock-Aware Programming?
 
@@ -362,12 +362,12 @@ Autumn is strictly modular. You only pay for what you pull. The Autumn K2 Compil
 For zero-copy network ingestion, native parsing, and hardware telemetry.
 ```kotlin
 plugins {
-    id("io.github.alchevrier.autumn.compiler") version "1.1.0"
+    id("io.github.alchevrier.autumn.compiler") version "1.2.0"
 }
 dependencies {
-    implementation("io.github.alchevrier:autumn-core:1.1.0")
-    implementation("io.github.alchevrier:autumn-resolver:1.1.0")    // Sockets & Network bounds
-    implementation("io.github.alchevrier:autumn-observatory:1.1.0") // Zero-allocation telemetry
+    implementation("io.github.alchevrier:autumn-core:1.2.0")
+    implementation("io.github.alchevrier:autumn-resolver:1.2.0")    // Sockets & Network bounds
+    implementation("io.github.alchevrier:autumn-observatory:1.2.0") // Zero-allocation telemetry
 }
 ```
 
@@ -375,12 +375,12 @@ dependencies {
 For 120fps stutter-free Jetpack Compose / SwiftUI applications driven by purely static arrays.
 ```kotlin
 plugins {
-    id("io.github.alchevrier.autumn.compiler") version "1.1.0"
+    id("io.github.alchevrier.autumn.compiler") version "1.2.0"
 }
 dependencies {
-    implementation("io.github.alchevrier:autumn-core:1.1.0")
-    implementation("io.github.alchevrier:autumn-state:1.1.0") // EpochStateEngine / Reactivity
-    implementation("io.github.alchevrier:autumn-ui:1.1.0")    // Canvas / Pixel bindings
+    implementation("io.github.alchevrier:autumn-core:1.2.0")
+    implementation("io.github.alchevrier:autumn-state:1.2.0") // EpochStateEngine / Reactivity
+    implementation("io.github.alchevrier:autumn-ui:1.2.0")    // Canvas / Pixel bindings
 }
 ```
 
@@ -388,12 +388,12 @@ dependencies {
 For heavy flat-mapped SoA (Structure of Arrays) state, configs, and raw binary string pooling.
 ```kotlin
 plugins {
-    id("io.github.alchevrier.autumn.compiler") version "1.1.0"
+    id("io.github.alchevrier.autumn.compiler") version "1.2.0"
 }
 dependencies {
-    implementation("io.github.alchevrier:autumn-core:1.1.0")
-    implementation("io.github.alchevrier:autumn-config:1.1.0")  // JSON / schema registry without GC
-    implementation("io.github.alchevrier:autumn-buckets:1.1.0") // Zero-copy String representations
+    implementation("io.github.alchevrier:autumn-core:1.2.0")
+    implementation("io.github.alchevrier:autumn-config:1.2.0")  // JSON / schema registry without GC
+    implementation("io.github.alchevrier:autumn-buckets:1.2.0") // Zero-copy String representations
 }
 ```
 ## A Holistic Programming Paradigm

@@ -25,7 +25,7 @@ object XdpGatewayDriver {
             AutumnRuntime.spawnOscillator(queueId) {
                 var processedAny = false
                 socket.pollRx(0) { baseOffset: Int, length: Int ->
-                    val hash = baseOffset % 4
+                    val hash = baseOffset % channel.sharded
                     val idx = channel.nextMappedIndexPartition(hash)
                     if (idx != -1) {
                         onPacket(idx, length)

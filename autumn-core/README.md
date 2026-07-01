@@ -6,12 +6,12 @@ Core interfaces, standard library primitives, and shared domain models for Autum
 
 ```mermaid
 graph TD
-    subgraph autumn-core [Autumn Core Primitives]
+    subgraph Core [Autumn Core Primitives]
         direction TB
         
         subgraph Pacts ["Compiler Pacts (Annotations)"]
             A1["@Pipelined"]
-            A2["@BoundaryChannel"]
+            A2["@BoundaryChannel / @XdpGateway"]
             A3["@LongLived / @InjectTopology"]
         end
         
@@ -25,6 +25,11 @@ graph TD
             E3 -->|Polls indices from| M1
             M3[AutumnMemoryBank] -->|Off-Heap / TypedArray| M4[(Flat Primitive SoA RAM)]
         end
+    end
+    
+    subgraph Network [AF_XDP Kernel Bypass]
+        N1[eBPF Program] -->|Redirects Packets| N2[XSK Map]
+        N2 -->|UMEM Zero-Copy DMA| M3
     end
     
     A3 -.->|Guides K2 Compiler to Wire| E2

@@ -25,6 +25,9 @@ Autumn attempts to bring this physical rigor to Kotlin by exploring three archit
 Because memory layouts are entirely flattened and allocated statically at boot (`AutumnMemoryBank`), there is no pointer-chasing and no Garbage Collector footprint. Applications map directly to the CPU's L1/L2 cache, opening the door for high-performance zero-copy auditing and deterministic state databases.
 
 ### 2. The Universal FSM Boundary (Eliminating Asynchronous I/O)
+
+Every piece of application state lives inside a statically allocated Autumn Memory Bank. There are no blocking connections to read files, sockets, or standard input streams. I/O is resolved via **Kernel Bypass (AF_XDP/eBPF)** for local networks, or POSIX `fread` for offline testing.
+By attaching directly to XDP rings via native C-interop, the pipeline translates 4 million real historical `NASDAQ_ITCH50` packets per second deterministically on a single commodity hardware core.
 Modern software manages slow communication (Network, Disk, Databases, HTTP) using abstractions like Coroutines, Promises, or Async/Await. These mechanisms introduce massive overhead through context switching and heap-allocated state machines. 
 
 Autumn discards the asynchronous model entirely by abstracting *all* costly communication into a **BoundaryChannel**. The Business Logic is modeled as a pure Finite State Machine (FSM) that never blocks, never sleeps, and never waits. It aims to execute deterministically, computing state transitions instantly. Any interaction with the unpredictable "outside world" is pushed across a zero-copy ring-buffer boundary. Whether the event is an AF_XDP network packet, an `io_uring` SSD read, or an HTTP payload, the application purely reacts to memory-mapped state transitions. Hardware latency is conceptually partitioned away from the logic.

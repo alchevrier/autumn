@@ -40,9 +40,38 @@ The typical single-core cycle budget for x86 processors means we are completing 
 When the `@BoundaryChannel(sharded = N)` annotation is added, the Autumn K2 compiler automatically bridges this exact architecture without the boilerplate:
 
 - It dynamically instantiates an array of `N` separated SPSC channels (`initPartitions`).
-- It seamlessly rewrites the producer's `event = inboundNetwork.next()` to hash the symbol payload (`hashKey`) and target the specifically pinned SPSC partition partition natively via `nextIndex(hashKey)`.
+- It seamlessly rewrites the producer's `event = inboundNetwork.next()` to hash the symbol payload (`hashKey`) and target the specifically pinned SPSC partition natively via `nextIndex(hashKey)`.
 - It **completely unrolls the Arbiter execution logic** straight into the IR byte-tree (`TopologySynthesisTransformer.kt`), compiling into a static `tick()` frame cooperatively paced by the `AutumnScheduler` and `HardwareOscillator`, mapped securely against the globally validated hardware bounds.
 
-By defining the `AutumnMemoryBank` globally at compile time, we completely strip away the need for explicit bounds checking, `VarHandle` barriers, `false-sharing` cache-line padding, and dynamic SPMC locking logic.
+### Live Network Ingestion: Automating Kernel Bypass (Phase 3)
 
-With Autumn, you write idiomatic event-driven domain logic, and the compiler statically enforces and synthesizes a wait-free, optimally routed multi-core system.
+In network-bound setups like the `XdpNetworkBenchmark`, standard POSIX C-interop usually demands explicit manual handling of raw OS structs (`sockaddr_in`) and syscall bindings (`socket()`, `sendto()`). 
+
+We demonstrate this manual mapping capability explicitly within `runXdpTrafficGenerator()` as a proof of concept—proving that Autumn’s native multiplatform capabilities can seamlessly command Linux OS network stacks identically to raw C/C++.
+
+However, directly in the `xdpMain()` execution path, **you don't write any of this interop logic for inbound pipes**.
+
+Because the developer defines an explicit channel contract via annotations (`@XdpGateway` and `@BoundaryChannel`), the system routes automatically using DMA map interception:
+
+```mermaid
+graph TD
+    subgraph Traditional CInterop 
+        direction TB
+        C1[socket AF_INET] -->|Manual Binding| C2[alloc<sockaddr_in>]
+        C2 -->|POSIX Syscalls| C3["sendto() / recv()"]
+        C3 -.->|JVM/JNI Overhead| JVM[Heap Allocation]
+    end
+
+    subgraph Autumn K2 Synthesis
+        direction TB
+        A1["@XdpGateway('veth1')"] -->|Compiler AST Weave| A2[XdpGatewayDriver.bind]
+        A2 -->|eBPF bpf_redirect_map| A3["UMEM Ring Buffer"]
+        A3 -->|Zero-Copy| A4["AutumnMemoryBank"]
+    end
+    
+    C3 -.->|"VS"| A2
+```
+
+By defining the `AutumnMemoryBank` globally at compile time, we completely strip away the need for explicit C-Interop bounds checking, manual POSIX bindings, `false-sharing` cache-line padding, and dynamic locking logic. 
+
+With Autumn, you write idiomatic event-driven domain logic, and the compiler statically enforces and synthesizes a wait-free, optimally routed multi-core system directly onto the raw hardware endpoints.

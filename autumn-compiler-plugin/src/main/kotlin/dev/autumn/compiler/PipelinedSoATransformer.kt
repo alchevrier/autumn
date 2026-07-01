@@ -138,6 +138,7 @@ class PipelinedSoATransformer(
             
             for (property in boundStructClass.properties.toList()) {
                 val propertyName = property.name.asString()
+                if (propertyName == "index") continue // Do not store structural FSM indices into RAM.
                 val propertyType = property.getter?.returnType?.classFqName?.shortName()?.asString() ?: "Unknown"
 
                 var byteSize = when(propertyType) {

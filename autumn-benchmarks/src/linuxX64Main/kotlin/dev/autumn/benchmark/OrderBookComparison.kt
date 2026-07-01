@@ -245,6 +245,22 @@ var classicInstance: ClassicOrderBook? = null
 @LongLived
 @OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
 fun main(args: Array<String>) {
+    if (args.contains("--ipc-writer")) {
+        println("--- Booting Autonomous Bare-Metal IPC Writer Topology ---")
+        dev.autumn.memory.AutumnMemoryBank.allocate(16777216 * 20)
+        dev.autumn.benchmark.ipc.bootIpcWriter()
+        dev.autumn.benchmark.ipc.runWriterHotPathBenchmark()
+        return
+    }
+    
+    if (args.contains("--ipc-reader")) {
+        println("--- Booting Autonomous Bare-Metal IPC Reader Topology ---")
+        dev.autumn.memory.AutumnMemoryBank.allocate(16777216 * 20)
+        dev.autumn.benchmark.ipc.bootIpcReader()
+        dev.autumn.benchmark.ipc.runReaderColdPathBenchmark()
+        return
+    }
+
     if (args.contains("--udp-cloud")) {
         println("--- Booting Cloud-Tier POSIX UDP Topology ---")
         

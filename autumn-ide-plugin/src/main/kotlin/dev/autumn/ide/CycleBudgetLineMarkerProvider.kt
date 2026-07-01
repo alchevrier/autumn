@@ -58,7 +58,7 @@ class CycleBudgetLineMarkerProvider : LineMarkerProvider {
         return LineMarkerInfo(
             element.nameIdentifier ?: element,
             element.textRange,
-            PlatformIcons.PROPERTY_ICON, // Placeholder for a custom leaf icon (Requires SVG in resources)
+            AutumnIcons.Leaf, // Render the custom SVG registered inside AutumnIcons
             { cycleLabel }, // Tooltip text on hover
             null,
             GutterIconRenderer.Alignment.LEFT,

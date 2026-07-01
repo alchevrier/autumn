@@ -215,6 +215,7 @@ Architectural decisions live in [`docs/adr/`](docs/adr) and capture the initial 
 - ADR-0027 — Multi-Target Assembly Profiling and IDE Drill-Down
 - ADR-0028 — Hybrid WCET Certification, CFG Extraction, and Jitter Profiling
 - ADR-0029 — Universal FSM Device Boundary via BoundaryChannel
+- ADR-0030 — Pluggable Layered Boundary Transports
 
 ## Tooling Roadmap
 

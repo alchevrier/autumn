@@ -47,8 +47,14 @@ class AutumnPerformanceCenterToolWindow : ToolWindowFactory {
         val composePanel = ComposePanel()
         
         composePanel.setContent {
-            MaterialTheme(colors = darkColors()) {
-                Surface(modifier = Modifier.fillMaxSize()) {
+            val autumnColors = darkColors(
+                primary = Color(0xFFbb9457),
+                primaryVariant = Color(0xFF99582a),
+                secondary = Color(0xFFffe6a7),
+                error = Color(0xFF6f1d1b)
+            )
+            MaterialTheme(colors = autumnColors) {
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colors.background) {
                     TopologyDashboard(project)
                 }
             }
@@ -147,7 +153,7 @@ fun TopologyDashboard(project: Project) {
                     edgePadding = 8.dp
                 ) {
                     tabs.forEachIndexed { index, tabNode ->
-                        val icon = if (tabNode.type == "TopologyRoot") "⚙️" else "📦"
+                        val icon = if (tabNode.type == "TopologyRoot") "🍂" else "📦"
                         Tab(
                             selected = selectedTabIndex == index,
                             onClick = { selectedTabIndex = index },
@@ -230,12 +236,12 @@ fun ComponentCard(comp: TopologyComponent, selectedTarget: String, project: Proj
         border = BorderStroke(1.dp, Color.DarkGray)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            val icon = if (comp.type == "Channel") "📦" else "⚡"
+            val icon = if (comp.type == "Channel") "📦" else "🍂"
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("$icon ${comp.type}: ${comp.name}", style = MaterialTheme.typography.subtitle1, color = Color.Cyan)
+                Text("$icon ${comp.type}: ${comp.name}", style = MaterialTheme.typography.subtitle1, color = Color(0xFFffe6a7))
                 
                 if (comp.sourceFile.isNotEmpty()) {
-                    Text("🔗 Jump to Source", style = MaterialTheme.typography.caption, color = Color(0xFF6495ED), modifier = Modifier.clickable {
+                    Text("🔗 Jump to Source", style = MaterialTheme.typography.caption, color = Color(0xFFbb9457), modifier = Modifier.clickable {
                         var targetFile = comp.sourceFile
                         if (selectedTarget.contains("Native")) {
                             targetFile = targetFile.replace("jvmMain", "linuxX64Main").replace("jsMain", "linuxX64Main")
@@ -263,7 +269,7 @@ fun ComponentCard(comp: TopologyComponent, selectedTarget: String, project: Proj
                     Text("Cores: ${comp.sharded}x", style = MaterialTheme.typography.body2, color = Color(0xFFE066FF))
                 }
             }
-            if (comp.target.isNotEmpty()) Text("Routes To: ${comp.target}", style = MaterialTheme.typography.body2, color = Color.Yellow)
+            if (comp.target.isNotEmpty()) Text("Routes To: ${comp.target}", style = MaterialTheme.typography.body2, color = Color(0xFFbb9457))
             if (comp.shardKey.isNotEmpty()) Text("Partition Key: ${comp.shardKey}", style = MaterialTheme.typography.body2, color = Color(0xFFE066FF))
             
             if (expanded && comp.type == "Handler") {
@@ -282,20 +288,20 @@ fun ComponentCard(comp: TopologyComponent, selectedTarget: String, project: Proj
                 }
                 
                 if (opsString.isNotEmpty()) {
-                    Column(modifier = Modifier.background(Color.Black).padding(8.dp).fillMaxWidth()) {
+                    Column(modifier = Modifier.background(Color.Transparent).padding(8.dp).fillMaxWidth()) {
                         val lines = opsString.split(";").filter { it.isNotBlank() }
                         lines.forEach { line ->
                             val parts = line.split("|")
                             if (parts.size >= 3) {
                                 val opName = parts[1]
                                 val isBranch = opName.contains("IFEQ") || opName.contains("jmp") || opName.contains("b.eq") || opName.contains("br_if")
-                                val rowColor = if (isBranch) Color(0xFFDAA520) else Color(0xFF98FB98)
+                                val rowColor = if (isBranch) Color(0xFF99582a) else Color(0xFFbb9457)
                                 val branchPrefix = if (isBranch) "⑂ " else ""
                                 
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text(parts[0], fontFamily = FontFamily.Monospace, color = Color(0xFFA9A9A9), modifier = Modifier.weight(1f))
+                                    Text(parts[0], fontFamily = FontFamily.Monospace, color = Color.LightGray, modifier = Modifier.weight(1f))
                                     Text("$branchPrefix$opName", fontFamily = FontFamily.Monospace, color = rowColor, modifier = Modifier.weight(1f))
-                                    Text("${parts[2]} cyc", fontFamily = FontFamily.Monospace, color = Color(0xFFFF6347))
+                                    Text("${parts[2]} cyc", fontFamily = FontFamily.Monospace, color = Color(0xFF6f1d1b))
                                 }
                             }
                         }

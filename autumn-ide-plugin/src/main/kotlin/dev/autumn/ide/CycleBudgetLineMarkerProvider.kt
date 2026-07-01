@@ -27,12 +27,12 @@ class CycleBudgetLineMarkerProvider : LineMarkerProvider {
             return null
         }
 
-        // Return a mock line marker ⚡
+        // Return a mock line marker 🍂
         return LineMarkerInfo(
             element.nameIdentifier ?: element,
             element.textRange,
-            PlatformIcons.PROPERTY_ICON, // Placeholder for a custom lightning icon
-            { "⚡ 37 / 60 Cycles | Port 1 Pressure" }, // Tooltip text on hover
+            PlatformIcons.PROPERTY_ICON, // Placeholder for a custom leaf icon
+            { "🍂 37 / 60 Cycles | Port 1 Pressure" }, // Tooltip text on hover
             null,
             GutterIconRenderer.Alignment.LEFT,
             { "Autumn Circuit Lens" }

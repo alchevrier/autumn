@@ -58,8 +58,8 @@ flowchart LR
         D[POSIX fread PCAP] -.->|Batch Profiling| E
     end
 
-    E[@UdpGateway / @XdpGateway] -->|Zero-Copy| F[(AutumnMemoryBank)]
-    F -->|Lock-Free Ring| G[@HotPath Execution Engine]
+    E["@UdpGateway / @XdpGateway"] -->|Zero-Copy| F[("AutumnMemoryBank")]
+    F -->|Lock-Free Ring| G["@HotPath Execution Engine"]
     
     style F fill:#003472,stroke:#000,stroke-width:2px,color:#fff
     style G fill:#E34F26,stroke:#000,stroke-width:2px,color:#fff
@@ -87,20 +87,20 @@ Autumn effectively acts as a hardware description language that compiles nativel
 
 ```mermaid
 flowchart TD
-    A[Idiomatic Kotlin Code<br/>@CycleBudget / @Observe] --> B(K2 Compiler IR/FIR Hook)
+    A["Idiomatic Kotlin Code<br/>@CycleBudget / @Observe"] --> B("K2 Compiler IR/FIR Hook")
     
     subgraph Compiler Phase
-    B --> C[AST TopologySynthesisTransformer]
-    B --> D[CycleBudgetVisitor Math Limits]
+    B --> C["AST TopologySynthesisTransformer"]
+    B --> D["CycleBudgetVisitor Math Limits"]
     end
     
-    C --> E(LLVM linuxX64 Native Binaries)
-    C --> F(JVM C2 JIT Bytecode)
+    C --> E("LLVM linuxX64 Native Binaries")
+    C --> F("JVM C2 JIT Bytecode")
     
-    C --> G((topology.json Telemetry))
+    C --> G(("topology.json Telemetry"))
     D --> G
     
-    G -.-> H[Autumn IDE Performance Center<br/>Compose UI / Gutter Icons]
+    G -.-> H["Autumn IDE Performance Center<br/>Compose UI / Gutter Icons"]
     
     style E fill:#003472,stroke:#000,stroke-width:2px,color:#fff
     style H fill:#E34F26,stroke:#000,stroke-width:2px,color:#fff

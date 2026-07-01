@@ -38,6 +38,6 @@ struct autumn_xsk {
 
 // Function prototypes
 struct autumn_umem *autumn_configure_umem(void *buffer, size_t size);
-struct autumn_xsk *autumn_configure_xsk(struct autumn_umem *umem, const char *ifname, int queue_id);
+struct autumn_xsk *autumn_configure_xsk(struct autumn_umem *umem, const char *ifname, int queue_id, int force_copy);
 
 #endif // AUTUMN_XDP_H

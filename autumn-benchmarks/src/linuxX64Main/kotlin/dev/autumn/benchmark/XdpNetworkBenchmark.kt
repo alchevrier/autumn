@@ -1,3 +1,4 @@
+@file:OptIn(ExperimentalForeignApi::class)
 package dev.autumn.benchmark
 
 import dev.autumn.annotations.*
@@ -22,6 +23,7 @@ val xdpMetrics = LatencyHistogram(0, 1000000)
 @Observe("xdpTelemetry")
 @HotPath
 @CycleBudget(limit = 600)
+@LongLived
 fun onXdpPacket(idx: Int) {
     val packet = OrderEvent(idx)
     // 1. Packet logic executes here totally natively!
@@ -53,7 +55,7 @@ fun runXdpTrafficGenerator() {
         destAddr.sin_family = AF_INET.convert()
         // Port 1234 in Network Byte Order is 53764
         destAddr.sin_port = 53764.toUShort()
-        inet_pton(AF_INET, "10.0.0.2", destAddr.sin_addr.ptr)
+        destAddr.sin_addr.s_addr = 167772186u // 10.0.0.2 in network byte order (Big Endian)
         
         val payload = "ITCH_MOCK_PAYLOAD_DATA"
         val payloadPtr = payload.cstr.ptr
@@ -86,7 +88,8 @@ fun xdpMain() {
 
     try {
         println("[Autumn OS] Binding XDP Socket to veth1 (Queue 0)...")
-        val socket = XdpSocket(interfaceName = "veth1", queueId = 0)
+        // Utilizing SKB Copy Mode natively so we can execute over VETH correctly.
+        val socket = XdpSocket(interfaceName = "veth1", queueId = 0, forceCopy = true)
 
         // Spin up the traffic generator on a stray core 
         dev.autumn.channel.AutumnRuntime.spawn {
@@ -98,7 +101,7 @@ fun xdpMain() {
         var messagesReceived = 0
         // Master Thread: Acts as the physical NIC bridging layer
         while (messagesReceived < 1_000_000) {
-            socket.poll { baseOffset, length ->
+            socket.pollRx(0) { baseOffset: Int, length: Int ->
                 val hash = baseOffset % 4
                 val idx = xdpInboundQueue.nextMappedIndexPartition(hash)
                 if (idx != -1) {

@@ -25,12 +25,14 @@
 #endif
 
 // XDP socket options
-#define XDP_RX_RING                     1
-#define XDP_UMEM_REG                    3
-#define XDP_UMEM_FILL_RING              4
-#define XDP_UMEM_COMPLETION_RING        5
-#define XDP_TX_RING                     6
-#define XDP_MMAP_OFFSETS                7
+#define XDP_MMAP_OFFSETS                1
+#define XDP_RX_RING                     2
+#define XDP_TX_RING                     3
+#define XDP_UMEM_REG                    4
+#define XDP_UMEM_FILL_RING              5
+#define XDP_UMEM_COMPLETION_RING        6
+#define XDP_STATISTICS                  7
+#define XDP_OPTIONS                     8
 
 // XDP mmap offsets
 #define XDP_PGOFF_RX_RING               0
@@ -38,7 +40,10 @@
 #define XDP_UMEM_PGOFF_FILL_RING        0x100000000ULL
 #define XDP_UMEM_PGOFF_COMPLETION_RING  0x180000000ULL
 
-#define XDP_ZEROCOPY (1 << 1)
+#define XDP_SHARED_UMEM (1 << 0)
+#define XDP_COPY        (1 << 1)
+#define XDP_ZEROCOPY    (1 << 2)
+#define XDP_USE_NEED_WAKEUP (1 << 3)
 
 struct sockaddr_xdp {
     __u16 sxdp_family;
@@ -54,6 +59,7 @@ struct xdp_umem_reg {
     __u32 chunk_size;
     __u32 headroom;
     __u32 flags;
+    __u32 tx_metadata_len;
 };
 
 struct xdp_ring_offset {

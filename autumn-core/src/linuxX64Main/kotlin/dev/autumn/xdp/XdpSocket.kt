@@ -7,10 +7,11 @@ import platform.posix.*
 class XdpSocket(
     val interfaceName: String,
     val queueId: Int,
+    val forceCopy: Boolean = false,
     val numFrames: Int = 4096
 ) {
     companion object {
-        const val FRAME_SIZE = 2048UL
+        const val FRAME_SIZE = 4096UL
     }
 
     val umemSize = FRAME_SIZE * numFrames.toULong()
@@ -38,7 +39,7 @@ class XdpSocket(
             ?: throw RuntimeException("Failed to configure UMEM via autumn_configure_umem")
 
         // 3. Bind the AF_XDP socket dynamically to the physical NIC interface
-        xskObj = autumn_configure_xsk(umemObj, interfaceName, queueId)
+        xskObj = autumn_configure_xsk(umemObj, interfaceName, queueId, if(forceCopy) 1 else 0)
             ?: throw RuntimeException("Failed to bind AF_XDP Socket via autumn_configure_xsk")
     }
 

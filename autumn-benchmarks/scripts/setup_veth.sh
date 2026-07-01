@@ -20,4 +20,11 @@ ip addr add 10.0.0.2/24 dev veth1
 sysctl -w net.ipv6.conf.veth0.disable_ipv6=1 >/dev/null 2>&1
 sysctl -w net.ipv6.conf.veth1.disable_ipv6=1 >/dev/null 2>&1
 
+echo "[Autumn OS] Compiling eBPF Kernel Bypass Program natively..."
+clang -O2 -g -Wall -target bpf -c xdp_redirect.c -o xdp_redirect.o
+
+echo "[Autumn OS] Attaching eBPF Bypasser to veth1..."
+# Forces NIC to leverage our BPF hook on inbound routes
+ip link set dev veth1 xdp obj xdp_redirect.o sec xdp
+
 echo "[Autumn OS] Veth Pair Active! XDP Socket can now bind to veth1."

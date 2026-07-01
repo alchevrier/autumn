@@ -12,8 +12,9 @@
 #include <net/if.h>
 #include <sys/socket.h>
 #include <sys/mman.h>
+#include "bpf_sys.h"
 
-#define AUTUMN_FRAME_SIZE 2048
+#define AUTUMN_FRAME_SIZE 4096
 #define AUTUMN_RING_SIZE 2048
 
 struct autumn_umem *autumn_configure_umem(void *buffer, size_t size) {
@@ -25,7 +26,7 @@ struct autumn_umem *autumn_configure_umem(void *buffer, size_t size) {
     return umem;
 }
 
-struct autumn_xsk *autumn_configure_xsk(struct autumn_umem *umem, const char *ifname, int queue_id) {
+struct autumn_xsk *autumn_configure_xsk(struct autumn_umem *umem, const char *ifname, int queue_id, int force_copy) {
     struct autumn_xsk *xsk = calloc(1, sizeof(struct autumn_xsk));
     if (!xsk) return NULL;
     
@@ -38,13 +39,18 @@ struct autumn_xsk *autumn_configure_xsk(struct autumn_umem *umem, const char *if
     }
 
     // 1. Register the UMEM memory map to the Kernel
+    // Zero out tx_metadata_len correctly per new kernel structures
     struct xdp_umem_reg mr = {
         .addr = (unsigned long)umem->buffer,
         .len = umem->size,
         .chunk_size = AUTUMN_FRAME_SIZE,
         .headroom = 0,
-        .flags = 0
+        .flags = 0,
+        .tx_metadata_len = 0
     };
+
+    printf("[C DEBUG] UMEM Reg: addr=%lu, len=%lu, chunk_size=%u, sizeof(mr)=%zu\n", (unsigned long)mr.addr, (unsigned long)mr.len, mr.chunk_size, sizeof(mr));
+    fflush(stdout);
 
     if (setsockopt(xsk->fd, SOL_XDP, XDP_UMEM_REG, &mr, sizeof(mr)) < 0) {
         perror("setsockopt(XDP_UMEM_REG)");
@@ -99,12 +105,25 @@ struct autumn_xsk *autumn_configure_xsk(struct autumn_umem *umem, const char *if
         .sxdp_family = PF_XDP,
         .sxdp_ifindex = if_nametoindex(ifname),
         .sxdp_queue_id = queue_id,
-        .sxdp_flags = XDP_ZEROCOPY // Native Zero-Copy strictly enforced
+        .sxdp_flags = force_copy ? XDP_COPY : XDP_ZEROCOPY
     };
     
     if (bind(xsk->fd, (struct sockaddr *)&sxdp, sizeof(sxdp)) < 0) {
         perror("bind(AF_XDP)");
         close(xsk->fd); free(xsk); return NULL;
+    }
+
+    // 6. Connect this live Socket FD to the eBPF Map so the Kernel can redirect traffic to us!
+    int bpf_map_fd = bpf_obj_get("/sys/fs/bpf/autumn/xsks_map");
+    if (bpf_map_fd >= 0) {
+        if (bpf_map_update_elem(bpf_map_fd, &queue_id, &xsk->fd, BPF_ANY) == 0) {
+            printf("[Autumn OS] Successfully injected Socket FD into Kernel BPF XSKMAP!\n");
+        } else {
+            perror("[Autumn OS] Failed to inject Socket FD into Kernel BPF XSKMAP!");
+        }
+        close(bpf_map_fd);
+    } else {
+        printf("[Autumn WARNING] Could not find /sys/fs/bpf/autumn/xsks_map. eBPF redirection will not actively occur.\n");
     }
 
     return xsk;

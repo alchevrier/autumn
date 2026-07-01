@@ -244,13 +244,5 @@ var classicInstance: ClassicOrderBook? = null
 
 @LongLived
 fun main() {
-    // Correctness verified online to proudly prove K2 capabilities
-    val classic = ClassicOrderBook()
-    classicInstance = classic
-    classic.setup()
-    println("--- Executing Classic Manual Benchmark ---")
-    classic.run()
-
-    bootstrapAutumnPipeline()
-    platform.posix.sleep(5U)
+    xdpMain()
 }

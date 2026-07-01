@@ -11,7 +11,7 @@ actual class ZeroCopyNetworkChannel actual constructor(
     val capacity: Int
 ) {
     @PublishedApi
-    internal val socket = XdpSocket(interfaceName, queueId, capacity)
+    internal val socket = XdpSocket(interfaceName, queueId, forceCopy = true, numFrames = capacity)
 
     actual inline fun poll(block: (offset: Int, length: Int) -> Unit) {
         // Pushes the exact `startIndex` base offset mathematically aligned by 

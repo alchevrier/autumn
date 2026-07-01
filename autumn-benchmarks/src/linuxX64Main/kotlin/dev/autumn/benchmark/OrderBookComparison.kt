@@ -244,5 +244,16 @@ var classicInstance: ClassicOrderBook? = null
 
 @LongLived
 fun main() {
-    xdpMain()
+    dev.autumn.benchmark.itch.bootItchParser()
+    dev.autumn.benchmark.itch.parserMetrics.startRecording()
+    
+    // We are deliberately bypassing XDP Kernel loops for this test to explicitly measure the Native mathematical
+    // pointer extraction throughput (Phase 4).
+    
+    dev.autumn.channel.AutumnRuntime.spawn {
+        dev.autumn.benchmark.itch.parseRealItchFile("/home/alchevrier/Downloads/01302019.NASDAQ_ITCH50")
+        kotlin.system.exitProcess(0)
+    }
+    
+    platform.posix.sleep(120U)
 }

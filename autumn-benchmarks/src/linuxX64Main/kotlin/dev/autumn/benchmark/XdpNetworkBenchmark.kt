@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalForeignApi::class)
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
 package dev.autumn.benchmark
 
 import dev.autumn.annotations.*
@@ -10,6 +10,7 @@ import dev.autumn.observatory.LatencyHistogram
 import dev.autumn.xdp.XdpSocket
 import platform.posix.*
 import dev.autumn.xdp.XdpGatewayDriver
+import kotlinx.cinterop.*
 import kotlin.system.exitProcess
 
 @LongLived
@@ -95,13 +96,6 @@ fun xdpMain() {
             runXdpTrafficGenerator()
             println("[Autumn OS] Received 1,000,000 packets directly from Kernel BPF!")
             exitProcess(0)
-        }
-
-        // The K2 Compiler dynamically injects this exact binding loop behind the scenes 
-        // when it evaluates the @XdpGateway annotation on 'xdpInboundQueue'
-        XdpGatewayDriver.bind("veth1", 0, forceCopy = true, xdpInboundQueue) { idx, length ->
-            val order = OrderEvent(idx)
-            order.price = length
         }
         
     } catch (e: Exception) {

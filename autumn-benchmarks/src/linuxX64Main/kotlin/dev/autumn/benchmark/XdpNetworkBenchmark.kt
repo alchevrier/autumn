@@ -39,9 +39,41 @@ fun bootXdpPipeline() {
 }
 
 fun runXdpTrafficGenerator() {
-    println("[Traffic Generator] Booting pure POSIX UDP socket on veth0...")
-    // This runs in a separate thread, blasting standard UDP packets to 10.0.0.2 (veth1).
-    // Autumn will intercept these at the bare-metal kernel boundary before they even reach the Linux network stack!
+    println("[Traffic Generator] Booting pure POSIX UDP socket targeting veth1...")
+    
+    val sockfd = socket(AF_INET, SOCK_DGRAM, 0)
+    if (sockfd < 0) {
+        println("[Traffic Generator] Failed to create socket")
+        return
+    }
+    
+    memScoped {
+        val destAddr = alloc<sockaddr_in>()
+        memset(destAddr.ptr, 0, sizeOf<sockaddr_in>().convert())
+        destAddr.sin_family = AF_INET.convert()
+        // Port 1234 in Network Byte Order is 53764
+        destAddr.sin_port = 53764.toUShort()
+        inet_pton(AF_INET, "10.0.0.2", destAddr.sin_addr.ptr)
+        
+        val payload = "ITCH_MOCK_PAYLOAD_DATA"
+        val payloadPtr = payload.cstr.ptr
+        val payloadLen = payload.length.convert<size_t>()
+        
+        println("[Traffic Generator] Waiting 2s for XDP BPF program to attach...")
+        sleep(2u)
+        
+        println("[Traffic Generator] Transmitting 1,000,000 UDP packets natively...")
+        val start = dev.autumn.scheduler.AutumnClock.now()
+        
+        for (i in 0 until 1_000_000) {
+            sendto(sockfd, payloadPtr, payloadLen, 0, destAddr.ptr.reinterpret(), sizeOf<sockaddr_in>().convert())
+            if (i % 2000 == 0) sched_yield() // Small hardware yield to keep VETH alive
+        }
+        
+        val nanos = dev.autumn.scheduler.AutumnClock.now() - start
+        println("[Traffic Generator] Transmission complete in ${nanos / 1_000_000}ms!")
+    }
+    close(sockfd)
 }
 
 @LongLived
@@ -62,22 +94,24 @@ fun xdpMain() {
         }
 
         println("[Autumn OS] Entering Lock-Free Hardware DMA Polling phase...")
+        xdpMetrics.startRecording()
+        var messagesReceived = 0
         // Master Thread: Acts as the physical NIC bridging layer
-        while (true) {
+        while (messagesReceived < 1_000_000) {
             socket.poll { baseOffset, length ->
-                // Look into the raw byte payload to find the Session ID
-                // For now, mock a round-robin hash
                 val hash = baseOffset % 4
-                
                 val idx = xdpInboundQueue.nextMappedIndexPartition(hash)
                 if (idx != -1) {
                     val order = OrderEvent(idx)
-                    // Memory Copy raw packet payload from XDP UMEM -> Autumn Memory Bank
-                    order.price = length // Mock payload extraction
-                    inboundNetwork.commitNextPartition(hash)
+                    order.price = length
+                    
+                    xdpInboundQueue.commitNextPartition(hash)
+                    messagesReceived++
                 }
             }
         }
+        println("[Autumn OS] Received 1,000,000 packets directly from Kernel BPF!")
+        exitProcess(0)
     } catch (e: Exception) {
         println("XDP Failed to bind. Did you run the setup_veth.sh script with sudo?")
         e.printStackTrace()

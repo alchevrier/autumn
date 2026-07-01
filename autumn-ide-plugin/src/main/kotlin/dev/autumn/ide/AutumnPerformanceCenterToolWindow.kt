@@ -237,7 +237,7 @@ fun ComponentCard(comp: TopologyComponent, selectedTarget: String, project: Proj
 
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { expanded = !expanded },
-        backgroundColor = if (comp.portPressure == "HIGH") MaterialTheme.colors.error.copy(alpha=0.8f) else Color(0x22bb9457),
+        backgroundColor = if (comp.portPressure == "ALU_EXCEEDED") MaterialTheme.colors.error.copy(alpha=0.8f) else Color(0x22bb9457),
         elevation = 0.dp,
         border = BorderStroke(1.dp, Color(0xFF99582a))
     ) {
@@ -269,7 +269,7 @@ fun ComponentCard(comp: TopologyComponent, selectedTarget: String, project: Proj
             
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 if (comp.cycles > 0) Text("Cycles: ${comp.cycles}", style = MaterialTheme.typography.body2)
-                if (comp.portPressure.isNotEmpty()) Text("Pressure: ${comp.portPressure}", style = MaterialTheme.typography.body2)
+                if (comp.portPressure.isNotEmpty()) Text("Warning: ${comp.portPressure}", style = MaterialTheme.typography.body2, color = MaterialTheme.colors.error)
                 if (comp.capacity > 0) Text("Capacity: ${comp.capacity}", style = MaterialTheme.typography.body2)
                 if (comp.sharded > 1) {
                     Text("Cores: ${comp.sharded}x", style = MaterialTheme.typography.body2, color = Color(0xFFE066FF))

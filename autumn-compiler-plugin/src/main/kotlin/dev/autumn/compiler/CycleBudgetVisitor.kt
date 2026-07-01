@@ -135,7 +135,8 @@ class CycleBudgetVisitor(
                     type = "Handler",
                     name = declaration.name.asString(),
                     cycles = estimatedCycles,
-                    portPressure = if (estimatedCycles > budgetLimit) "HIGH" else "NORMAL",
+                    // Rename portPressure to simply ALUBottleneck (Boolean threshold rather than arbitrary normal)
+                    portPressure = if (estimatedCycles > budgetLimit) "ALU_EXCEEDED" else "",
                     target = targetChannel,
                     sourceFile = srcFile,
                     sourceLine = srcLine,

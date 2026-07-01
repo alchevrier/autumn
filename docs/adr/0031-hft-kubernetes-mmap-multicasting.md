@@ -16,7 +16,7 @@ Autumn aims to capture the speed of a Monolith while retaining the crash-toleran
 
 ## Decision
 
-We will implement **Shared Memory (`mmap`) Multicasting** as a formal Pluggable Boundary Transport using the `@FilesystemGateway` annotation. 
+We will implement **Shared Memory (`mmap`) Multicasting** as a formal Pluggable Boundary Transport using the `@IpcGateway` annotation. 
 
 Instead of treating distinct application processes as distinct VMs sending packets via `IPC` loops, Autumn treats the Kubernetes Node (or Bare-Metal server) as a single physical System-on-a-Chip (SoC). 
 

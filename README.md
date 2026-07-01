@@ -230,7 +230,7 @@ A companion IntelliJ plugin will map this data back onto the source code, creati
 - **Cycle Costing Feedback:** Hover over a `tick()` handler and see exactly how many ALU CPU cycles the compiler mathematically predicts the frame will cost. 
 - **Pre-emptive Squiggles:** Automatically red-underline a new class property if it crosses the strictly enforced `@ThreadCacheBudget` capacity boundary *before* you run the gradle build.
 
-### Zero-Copy Inter-Process Multicasting (`@ColdChannel` & `@FilesystemGateway`)
+### Zero-Copy Inter-Process Multicasting (`@ColdChannel` & `@IpcGateway`)
 The memory architecture in Autumn is already perfectly flat. Bypassing Inter-Process Communication (IPC) bottlenecks entirely, future development will allow mapping multiple distinct Autumn applications directly onto the same disk-backed or `/dev/shm` shared memory block. 
 Using `.mmap()` natively, the Hot Path (e.g. Market Data parsing running on isolated cores 4-15) writes lock-free indices directly to memory. Downstream Cold Path applications (Risk, DB Logging, Websockets on shared cores 0-3) map the same memory block and read sequentially.
 This physically eliminates **backpressure**! A slow database write on Core 0 can never lock or stall the Hot Strategy execution on Core 4. You achieve the sub-microsecond determinism of a monolith, but the restartability/crash-tolerance of distributed microservices.

@@ -5,34 +5,36 @@ import com.intellij.codeInsight.daemon.LineMarkerProvider
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtProperty
 import com.intellij.util.PlatformIcons
 import java.io.File
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.decodeFromString
 import com.intellij.openapi.project.Project
+import com.intellij.codeInsight.daemon.GutterIconNavigationHandler
+import com.intellij.openapi.fileEditor.OpenFileDescriptor
+import com.intellij.openapi.vfs.LocalFileSystem
 
 class CycleBudgetLineMarkerProvider : LineMarkerProvider {
 
     override fun getLineMarkerInfo(element: PsiElement): LineMarkerInfo<*>? {
-        // Only target Kotlin functions
-        if (element !is KtNamedFunction) return null
+        if (element !is KtNamedFunction && element !is KtProperty) return null
 
-        // The K2 autumn-compiler-plugin performs the heavy ILP and cycle accumulation math early in the build.
-        // It exports the physical bounds to `topology.json`. The IDE simply reads this telemetry out-of-band to
-        // overlay the real-time hardware schematic directly onto the source code, keeping the IDE lightweight.
+        val functionName = (element as? KtNamedFunction)?.name ?: (element as? KtProperty)?.name ?: return null
         
-        val functionName = element.name ?: return null
-        val docString = element.docComment?.text ?: ""
+        val isAutumnObserve = (element as? KtNamedFunction)?.annotationEntries?.any { 
+            it.shortName?.asString() == "Observe" || it.shortName?.asString() == "CycleBudget" 
+        } == true
         
-        // Very basic stub to light up `@CycleBudget` handlers visually
-        val isAutumnObserve = element.annotationEntries.any { it.shortName?.asString() == "Observe" || it.shortName?.asString() == "CycleBudget" }
+        val isAutumnChannel = (element as? KtProperty)?.annotationEntries?.any {
+            it.shortName?.asString() in listOf("BoundaryChannel", "ColdChannel", "RegisterChannel", "XdpGateway")
+        } == true
         
-        if (!isAutumnObserve && !docString.contains("@CycleBudget")) {
-            return null
-        }
+        if (!isAutumnObserve && !isAutumnChannel) return null
         
-        // Attempt to parse actual compiler output for this element
-        var cycleLabel = "🍂 Autumn Cycle Budget Enforced"
+        var cycleLabel = if (isAutumnChannel) "🍂 Autumn Channel Boundary" else "🍂 Autumn Cycle Budget Enforced"
+        var navHandler: GutterIconNavigationHandler<PsiElement>? = null
+        
         try {
             val project = element.project
             val rootDir = File(project.basePath ?: "")
@@ -40,27 +42,57 @@ class CycleBudgetLineMarkerProvider : LineMarkerProvider {
                 .filter { it.name == "topology.json" && it.absolutePath.contains("build/reports/autumn") }
                 .toList()
                 
+            val allComps = mutableListOf<TopologyComponent>()
             for (file in allTopologyFiles) {
                 val rawJson = file.readText()
-                val decoded = Json { ignoreUnknownKeys = true }.decodeFromString<List<TopologyComponent>>(rawJson)
-                val comp = decoded.find { it.name == functionName && it.type == "Handler" }
-                if (comp != null && comp.cycles > 0) {
-                    val pressureStr = if (comp.portPressure.isNotEmpty()) " | Port Pressure: ${comp.portPressure}" else ""
+                allComps.addAll(Json { ignoreUnknownKeys = true }.decodeFromString<List<TopologyComponent>>(rawJson))
+            }
+            
+            val comp = allComps.find { it.name == functionName }
+            if (comp != null) {
+                if (comp.type == "Handler" && comp.cycles > 0) {
+                    val pressureStr = if (comp.portPressure.isNotEmpty()) " | Warning: ${comp.portPressure}" else ""
                     cycleLabel = "🍂 ${comp.cycles} ALU Cycles Estimated$pressureStr"
-                    break
+                } else if (comp.type == "Channel" && comp.capacity > 0) {
+                    cycleLabel = "🍂 Channel Queue (${comp.capacity} Events, ${comp.sharded}x Shards)"
+                }
+                
+                // Add Navigation if it routes somewhere
+                if (comp.target.isNotEmpty()) {
+                    cycleLabel += " → Routes To: ${comp.target} (Click to follow dataflow)"
+                    val targetComp = allComps.find { it.name == comp.target || com.intellij.openapi.util.text.StringUtil.containsIgnoreCase(it.target, comp.name) }
+                    if (targetComp != null) {
+                        navHandler = GutterIconNavigationHandler<PsiElement> { _, _ ->
+                            val vFile = LocalFileSystem.getInstance().findFileByIoFile(File(targetComp.sourceFile))
+                            if (vFile != null) {
+                                OpenFileDescriptor(project, vFile, targetComp.sourceLine - 1, 0).navigate(true)
+                            }
+                        }
+                    }
+                } else if (comp.type == "Channel") {
+                    // Try to find a handler that routes to this channel
+                    val sourceComp = allComps.find { it.target == comp.name || it.target.split(",").contains(comp.name) }
+                    if (sourceComp != null) {
+                        cycleLabel += " ← Fed By: ${sourceComp.name} (Click to see Producer)"
+                        navHandler = GutterIconNavigationHandler<PsiElement> { _, _ ->
+                            val vFile = LocalFileSystem.getInstance().findFileByIoFile(File(sourceComp.sourceFile))
+                            if (vFile != null) {
+                                OpenFileDescriptor(project, vFile, sourceComp.sourceLine - 1, 0).navigate(true)
+                            }
+                        }
+                    }
                 }
             }
         } catch (e: Exception) {
-            // Fallback to static text if plugin JSON is unparseable or outdated
+            // Fallback
         }
 
-        // Return a dynamic line marker 🍂
         return LineMarkerInfo(
-            element.nameIdentifier ?: element,
+            (element as? KtNamedFunction)?.nameIdentifier ?: (element as? KtProperty)?.nameIdentifier ?: element,
             element.textRange,
-            AutumnIcons.Leaf, // Render the custom SVG registered inside AutumnIcons
-            { cycleLabel }, // Tooltip text on hover
-            null,
+            AutumnIcons.Leaf, 
+            { cycleLabel }, 
+            navHandler,
             GutterIconRenderer.Alignment.LEFT,
             { "Autumn Circuit Lens" }
         )

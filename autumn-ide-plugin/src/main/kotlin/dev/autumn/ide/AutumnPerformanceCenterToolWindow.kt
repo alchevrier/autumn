@@ -22,6 +22,7 @@ import kotlinx.serialization.Serializable
 import java.io.File
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.util.ui.UIUtil
 import kotlin.concurrent.timer
 
 @Serializable
@@ -47,16 +48,19 @@ class AutumnPerformanceCenterToolWindow : ToolWindowFactory {
         val composePanel = ComposePanel()
         
         composePanel.setContent {
+            // Pull the exact IntelliJ theme background natively
+            val ideBackground = Color(UIUtil.getPanelBackground().rgb)
+            
             val autumnColors = darkColors(
                 primary = Color(0xFFbb9457),
                 primaryVariant = Color(0xFF99582a),
                 secondary = Color(0xFFffe6a7),
                 error = Color(0xFF6f1d1b),
-                background = Color.Transparent,
+                background = ideBackground,
                 surface = Color(0xFF432818)
             )
             MaterialTheme(colors = autumnColors) {
-                Surface(modifier = Modifier.fillMaxSize(), color = Color.Transparent) {
+                Surface(modifier = Modifier.fillMaxSize(), color = ideBackground) {
                     TopologyDashboard(project)
                 }
             }

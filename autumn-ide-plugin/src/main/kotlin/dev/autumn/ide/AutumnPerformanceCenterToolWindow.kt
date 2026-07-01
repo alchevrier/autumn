@@ -51,10 +51,12 @@ class AutumnPerformanceCenterToolWindow : ToolWindowFactory {
                 primary = Color(0xFFbb9457),
                 primaryVariant = Color(0xFF99582a),
                 secondary = Color(0xFFffe6a7),
-                error = Color(0xFF6f1d1b)
+                error = Color(0xFF6f1d1b),
+                background = Color.Transparent,
+                surface = Color(0xFF432818)
             )
             MaterialTheme(colors = autumnColors) {
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colors.background) {
+                Surface(modifier = Modifier.fillMaxSize(), color = Color.Transparent) {
                     TopologyDashboard(project)
                 }
             }
@@ -231,9 +233,9 @@ fun ComponentCard(comp: TopologyComponent, selectedTarget: String, project: Proj
 
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { expanded = !expanded },
-        backgroundColor = if (comp.portPressure == "HIGH") MaterialTheme.colors.error.copy(alpha=0.6f) else MaterialTheme.colors.surface,
-        elevation = 2.dp,
-        border = BorderStroke(1.dp, Color.DarkGray)
+        backgroundColor = if (comp.portPressure == "HIGH") MaterialTheme.colors.error.copy(alpha=0.8f) else Color(0x22bb9457),
+        elevation = 0.dp,
+        border = BorderStroke(1.dp, Color(0xFF99582a))
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             val icon = if (comp.type == "Channel") "📦" else "🍂"

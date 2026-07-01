@@ -243,7 +243,53 @@ fun bootstrapAutumnPipeline() {
 var classicInstance: ClassicOrderBook? = null
 
 @LongLived
-fun main() {
+@OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+fun main(args: Array<String>) {
+    if (args.contains("--udp-cloud")) {
+        println("--- Booting Cloud-Tier POSIX UDP Topology ---")
+        
+        // Emulate the Spring/Autumn Boot context allocating the static memory bank
+        dev.autumn.memory.AutumnMemoryBank.allocate(16777216 * 20)
+        
+        dev.autumn.benchmark.itch.cloudUdpMetrics.startRecording()
+        dev.autumn.benchmark.itch.bootPosixUdpServer(8000, "0.0.0.0")
+        
+        // Spawn sender in a separate posix thread instead of fork to avoid process issues
+        dev.autumn.channel.AutumnRuntime.spawn {
+            platform.posix.sleep(1u)
+            val sendFd = platform.posix.socket(platform.posix.AF_INET, platform.posix.SOCK_DGRAM, 0)
+            memScoped {
+                val serverAddr = alloc<platform.posix.sockaddr_in>()
+                platform.posix.memset(serverAddr.ptr, 0, sizeOf<platform.posix.sockaddr_in>().toULong())
+                serverAddr.sin_family = platform.posix.AF_INET.convert<platform.posix.sa_family_t>()
+                val b0 = (8000 shr 8) and 0xFF
+                val b1 = 8000 and 0xFF
+                serverAddr.sin_port = ((b1 shl 8) or b0).toUShort()
+                serverAddr.sin_addr.s_addr = platform.posix.INADDR_ANY
+                
+                val mockPayload = allocArray<ByteVar>(36)
+                
+                println("🚀 [MOCK CLIENT] Blasting 2,000,000 UDP frames purely natively...")
+                for (i in 0 until 2_000_000) {
+                    platform.posix.sendto(sendFd, mockPayload, 36U, 0, serverAddr.ptr.reinterpret(), sizeOf<platform.posix.sockaddr_in>().convert())
+                }
+            }
+            platform.posix.close(sendFd)
+            println("🚀 [MOCK CLIENT] Finished sending.")
+        }
+        
+        // Block main thread to poll UDP natively since we aren't using the full scheduler
+        while (true) {
+            dev.autumn.benchmark.itch.pollUdpGateway()
+            if (dev.autumn.benchmark.itch.udpSockFd == -1) break
+        }
+        
+        println("[Autumn Observatory] P50 Latency : ${dev.autumn.benchmark.itch.cloudUdpMetrics.calculatePercentile(50.0)} ns")
+        println("[Autumn Observatory] P99 Latency : ${dev.autumn.benchmark.itch.cloudUdpMetrics.calculatePercentile(99.0)} ns")
+        println("[Autumn Observatory] P99.99 Latency: ${dev.autumn.benchmark.itch.cloudUdpMetrics.calculatePercentile(99.99)} ns")
+        return
+    }
+
     dev.autumn.benchmark.itch.bootItchParser()
     dev.autumn.benchmark.itch.parserMetrics.startRecording()
     
